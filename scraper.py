@@ -32,27 +32,31 @@ def getYahooOptions(symbol, options_day):
     tables = content.find_all("table")
     contracts_data = []
     if tables != []:
-        print(datestamp)
-        for i in range(0, len(content.find_all("table"))):
-            options_tables.append(tables[i])
+        try:
+            print(datestamp)
+            for i in range(0, len(content.find_all("table"))):
+                options_tables.append(tables[i])
 
-        for i in range(0,2):
-            contracts = options_tables[i].find_all("tr")[1:] # first row is header
-            contracts_new = []
-            for option in contracts:
-                if "in-the-money" in str(option):
-                    contracts_new.append(["in-the-money", option])
-                else:
-                    contracts_new.append(["out-of-money", option])
-        
-            for contract in contracts_new:
-                contract_data = []
-                for td in BeautifulSoup(str(contract[1]), "html.parser").find_all("td"):
-                    contract_data.append(td.text)
-                if i == 0:
-                    contracts_data.append(["Call", contract[0], today, contract_data[0], options_day, datetime.datetime.strptime(contract_data[1][:10],'%Y-%m-%d'), contract_data[2], contract_data[3], contract_data[4], contract_data[5], contract_data[8], contract_data[10]])
-                else:
-                    contracts_data.append(["Put", contract[0], today, contract_data[0], options_day, datetime.datetime.strptime(contract_data[1][:10],'%Y-%m-%d'), contract_data[2], contract_data[3], contract_data[4], contract_data[5], contract_data[8], contract_data[10]])
+            for i in range(0,2):
+                contracts = options_tables[i].find_all("tr")[1:] # first row is header
+                contracts_new = []
+                for option in contracts:
+                    if "in-the-money" in str(option):
+                        contracts_new.append(["in-the-money", option])
+                    else:
+                        contracts_new.append(["out-of-money", option])
+            
+                for contract in contracts_new:
+                    contract_data = []
+                    for td in BeautifulSoup(str(contract[1]), "html.parser").find_all("td"):
+                        contract_data.append(td.text)
+                    if i == 0:
+                        contracts_data.append(["Call", contract[0], today, contract_data[0], options_day, datetime.datetime.strptime(contract_data[1][:10],'%Y-%m-%d'), contract_data[2], contract_data[3], contract_data[4], contract_data[5], contract_data[8], contract_data[10]])
+                    else:
+                        contracts_data.append(["Put", contract[0], today, contract_data[0], options_day, datetime.datetime.strptime(contract_data[1][:10],'%Y-%m-%d'), contract_data[2], contract_data[3], contract_data[4], contract_data[5], contract_data[8], contract_data[10]])
+        except:
+            ValueError
+            print("Table is not empty, but can't read")
 
     return pd.DataFrame(contracts_data, columns=call_info)
     
