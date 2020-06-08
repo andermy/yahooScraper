@@ -98,7 +98,7 @@ def main():
     m = stockMongo()
     symbols = m.get_symbols()
     for sym in symbols:
-        prices = iterateYahooOptions(sym['sym'], 70)
+        prices = iterateYahooOptions(sym['sym'], 500)
         m.update_options(sym['sym'], prices)
         print("Yes")
 
