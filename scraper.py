@@ -66,7 +66,7 @@ def get_datestamp():
     dd = date.day
 
     # must use 12:30 for Unix time instead of 4:30 NY time 
-    next_close = datetime.datetime(yy, mm, dd, 12, 30)
+    next_close = datetime.datetime(yy, mm, dd, 0, 0)
 
     return next_close
 
