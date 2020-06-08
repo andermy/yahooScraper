@@ -6,15 +6,18 @@ import pandas as pd
 from pymongo import * 
 
 
-def iterateYahooOptions(symbol):
+def iterateYahooOptions(symbol, num):
     date = get_datestamp()
     options = []
 
-    for day in range(0,700):
+    for day in range(0,num):
+        print(day)
         date += datetime.timedelta(days=1)
         options.append(getYahooOptions(symbol, date))
     
-    return pd.concat(options)
+    options = pd.concat(options)
+    #options = options.set_index('date')
+    return options
 
 def getYahooOptions(symbol, options_day):
 
@@ -29,6 +32,7 @@ def getYahooOptions(symbol, options_day):
     tables = content.find_all("table")
     contracts_data = []
     if tables != []:
+        print(datestamp)
         for i in range(0, len(content.find_all("table"))):
             options_tables.append(tables[i])
 
@@ -67,17 +71,6 @@ def get_datestamp():
     return next_close
 
 
-def run():
-    today = int(time.time()) 
-    date = datetime.datetime.fromtimestamp(today) 
-    yy = date.year 
-    mm = date.month 
-    dd = date.day
-
-    # must use 12:30 for Unix time instead of 4:30 NY time 
-    next_close = datetime.datetime(yy, mm, dd, 2, 0)
-
-
 class stockMongo():
 
     mongoClient = None
@@ -98,16 +91,16 @@ class stockMongo():
 
     def update_options(self, symbol, data):
         if len(data) > 0:
-            self.stock_data.options.insert_one({'sym': symbol['sym'], 'options': data.to_dict()})
+            data.index = data.index.astype(str)
+            self.stock_data.optionsdata.insert_one({'sym': symbol, 'options': data.to_dict()})
     
-
 def main():  
     m = stockMongo()
     symbols = m.get_symbols()
     for sym in symbols:
-        a = iterateYahooOptions(sym['sym'])
-        print(a.head())
-
+        prices = iterateYahooOptions(sym['sym'], 70)
+        m.update_options(sym['sym'], prices)
+        print("Yes")
 
 if __name__ == "__main__":  
     main()
