@@ -30,7 +30,7 @@ def getYahooOptions(symbol, options_day):
     content = BeautifulSoup(data_html.text, "html.parser")
     options_tables = []
     tables = content.find_all("table")
-    print(len(tables))
+    print(options_day)
     contracts_data = []
     if tables != []:
         print(datestamp)
