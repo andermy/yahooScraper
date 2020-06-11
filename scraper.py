@@ -139,38 +139,70 @@ def add_companies():
             ValueError
             continue
         data = r.json()['data'][0]['report']
+        data1 = r.json()['data'][1]['report']
         try:
             ic_grp = data['ic']['GrossProfit']
         except:
-            ic_grp = None
+            try:
+                ic_grp = data1['ic']['GrossProfit']
+            except:
+                ic_grp = None
         try:
             ic_nil = data['ic']['NetIncomeLoss']
         except:
-            ic_nil = None
+            try:
+                ic_nil = data1['ic']['NetIncomeLoss']
+            except:
+                ic_nil = None
         try:
             ic_ore = data['ic']['OperatingExpenses']
         except:
-            ic_ore = None
+            try:
+                ic_ore = data1['ic']['OperatingExpenses']
+            except:
+                ic_ore = None
         try:
             cf_nil = data['cf']['NetIncomeLoss']
         except:
-            cf_nil = None
+            try:
+                cf_nil = data1['cf']['NetIncomeLoss']
+            except:
+                cf_nil = None
         try:
             cf_ipn = data['cf']['InterestPaidNet']
         except:
-            cf_ipn = None
+            try:
+                cf_ipn = data1['cf']['InterestPaidNet']
+            except:
+                cf_ipn = None
         try:
             bs_ass = data['bs']['Assets']
         except:
-            bs_ass = None
+            try:
+                bs_ass = data1['bs']['Assets']
+            except:
+                bs_ass = None
         try:
             bs_lia = data['bs']['Liabilities']
         except:
-            bs_lia = None
+            try:
+                bs_lia = data['bs']['Liabilities']
+            except:
+                bs_lia = None
         try:
             bs_itn = data['bs']['InventoryNet']
         except:
-            bs_itn = None
+            try:
+                bs_itn = data['bs']['InventoryNet']
+            except:
+                bs_itn = None
+        try:
+            date = r.json()['data'][0]['filedDate']
+        except:
+            try:
+                date = r.json()['data'][1]['filedDate']
+            except:
+                date = None
         stocks.append([sym['symbol'], ic_grp, ic_nil, ic_ore, cf_nil, cf_ipn ,bs_ass, bs_lia, bs_itn, r.json()['data'][0]['filedDate']])
         
     return stocks
