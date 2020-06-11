@@ -88,6 +88,15 @@ class stockMongo():
         self.mongoClient = MongoClient(url)
         self.stock_data = self.mongoClient[database]
     
+    #
+    # Adds a symbol from the ddbb, including all timeline entries
+    #
+    def add (self, symbol):
+        exists = self.stock_data.symbols.find ({'sym':symbol}).count()
+        if not exists:
+            self.stock_data.symbols.insert_one ({'sym':symbol});
+            print("'" + symbol + "'" + " added to the database")
+    
     def get_symbols(self):
         tickers = self.stock_data.symbols.find()
 
@@ -98,6 +107,40 @@ class stockMongo():
             data.index = data.index.astype(str)
             self.stock_data.optionsdata.insert_one({'sym': symbol, 'options': data.to_dict()})
     
+    def get_options(self, symbol):
+        symbols = self.stock_data.optionsdata.find({'sym': symbol})
+        cleanSymbols = []
+        for s in symbols:
+            df = pd.DataFrame.from_records(s['options'])
+            cleanSymbols.append(df)
+        op = pd.concat(cleanSymbols)
+        op['strike'] = pd.to_numeric(op['strike'],errors='coerce')
+        op['last'] = pd.to_numeric(op['last'],errors='coerce')
+        op['bid'] = pd.to_numeric(op['bid'],errors='coerce')
+        op['ask'] = pd.to_numeric(op['ask'],errors='coerce')
+        op['volume'] = pd.to_numeric(op['volume'],errors='coerce')
+        op['date'] = pd.to_datetime(op['date'], "%Y-%m-%d %H:%M:%S")
+        op['strike-date'] = pd.to_datetime(op['strike-date'], "%Y-%m-%d %H:%M:%S")
+        op['last_trade'] = pd.to_datetime(op['last_trade'], "%Y-%m-%d")
+        op = op.set_index('date')
+        return op
+
+def add_companies():
+    symbols = requests.get('https://finnhub.io/api/v1/stock/symbol?exchange=US&token=bqmgk37rh5rc5ul5lcs0')
+    stocks = []
+    i = 0
+    for sym in symbols.json():
+        i = i +1
+        print(i)
+        titles = ['symbol', 'ic-grossporfit', 'ic-netincomeloss', 'ic-operatingexpences', 'cf-netincomeloss', 'cf-interestpaidnet', 'bs-assets', 'bs-liabilities', 'bs-inventorynet', 'filesdate']
+        try:
+            r = requests.get('https://finnhub.io/api/v1/stock/financials-reported?symbol=' + str(sym['symbol']) + '&token=bqmgk37rh5rc5ul5lcs0')
+            data = r.json()['data'][0]['report']
+            stocks.append([sym['symbol'], data['ic']['GrossProfit'], data['ic']['NetIncomeLoss'],data['ic']['OperatingExpenses'],data['cf']['NetIncomeLoss'], data['cf']['InterestPaidNet'], data['bs']['Assets'], data['bs']['Liabilities'], data['bs']['InventoryNet'], r.json()['data']['filedDate']])
+        except:
+            ValueError
+    return pd.DataFrame(stockMongo, columns=titles)
+
 def main():  
     m = stockMongo()
     symbols = m.get_symbols()
