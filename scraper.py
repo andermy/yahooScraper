@@ -203,7 +203,7 @@ def add_companies():
                 date = r.json()['data'][1]['filedDate']
             except:
                 date = None
-        stocks.append([sym['symbol'], ic_grp, ic_nil, ic_ore, cf_nil, cf_ipn ,bs_ass, bs_lia, bs_itn, r.json()['data'][0]['filedDate']])
+        stocks.append([sym['symbol'], ic_grp, ic_nil, ic_ore, cf_nil, cf_ipn ,bs_ass, bs_lia, bs_itn, date])
         
     return stocks
 
