@@ -127,26 +127,53 @@ class stockMongo():
 
 def add_companies():
     symbols = requests.get('https://finnhub.io/api/v1/stock/symbol?exchange=US&token=bqmgk37rh5rc5ul5lcs0')
-    report = []
-    ic = []
-    bs = []
-    cf = []
+    stocks = []
     i = 0
     titles = ['symbol', 'ic-grossporfit', 'ic-netincomeloss', 'ic-operatingexpences', 'cf-netincomeloss', 'cf-interestpaidnet', 'bs-assets', 'bs-liabilities', 'bs-inventorynet', 'filesdate']
     for sym in symbols.json():
-        i = i +1
+        i = i + 1
         print(i)
         try:
             r = requests.get('https://finnhub.io/api/v1/stock/financials-reported?symbol=' + str(sym['symbol']) + '&token=bqmgk37rh5rc5ul5lcs0')
-            data = r.json()['data'][0]['report']
-            report.append([sym['symbol'], data.keys()])
-            bs.append([sym['symbol'], data['bs'].keys()])
-            ic.append([sym['symbol'], data['ic'].keys()])
-            cf.append([sym['symbol'], data['cf'].keys()])
-            #stocks.append([sym['symbol'], data['ic']['GrossProfit'], data['ic']['NetIncomeLoss'],data['ic']['OperatingExpenses'],data['cf']['NetIncomeLoss'], data['cf']['InterestPaidNet'], data['bs']['Assets'], data['bs']['Liabilities'], data['bs']['InventoryNet'], r.json()['data']['filedDate']])
         except:
             ValueError
-    return report, bs, ic, cf
+            continue
+        data = r.json()['data'][0]['report']
+        try:
+            ic-grp = data['ic']['GrossProfit']
+        except:
+            ic-grp = None
+        try:
+            ic-nil = data['ic']['NetIncomeLoss']
+        except:
+            ic-nil = None
+        try:
+            ic-ore = data['ic']['OperatingExpenses']
+        except:
+            ic-ore = None
+        try:
+            cf-nil = data['cf']['NetIncomeLoss']
+        except:
+            cf-nil = None
+        try:
+            cf-ipn = data['cf']['InterestPaidNet']
+        except:
+            cf-ipn = None
+        try:
+            bs-ass = data['bs']['Assets']
+        except:
+            bs-ass = None
+        try:
+            bs-lia = data['bs']['Liabilities']
+        except:
+            bs-lia = None
+        try:
+            bs-itn = data['bs']['InventoryNet']
+        except:
+            bs-itn = None
+        stocks.append([sym['symbol'], ic-grp, ic-nil, ic-ore, cf-nil, cf-ipc ,bs-ass, bs-lia, bs-itn, r.json()['data']['filedDate']])
+        
+    return stocks
 
 def main():  
     m = stockMongo()
