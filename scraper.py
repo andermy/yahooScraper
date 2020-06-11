@@ -171,7 +171,7 @@ def add_companies():
             bs_itn = data['bs']['InventoryNet']
         except:
             bs_itn = None
-        stocks.append([sym['symbol'], ic_grp, ic_nil, ic_ore, cf_nil, cf_ipn ,bs_ass, bs_lia, bs_itn, r.json()['data']['filedDate']])
+        stocks.append([sym['symbol'], ic_grp, ic_nil, ic_ore, cf_nil, cf_ipn ,bs_ass, bs_lia, bs_itn, r.json()['data'][0]['filedDate']])
         
     return stocks
 
