@@ -140,38 +140,38 @@ def add_companies():
             continue
         data = r.json()['data'][0]['report']
         try:
-            ic-grp = data['ic']['GrossProfit']
+            ic_grp = data['ic']['GrossProfit']
         except:
-            ic-grp = None
+            ic_grp = None
         try:
-            ic-nil = data['ic']['NetIncomeLoss']
+            ic_nil = data['ic']['NetIncomeLoss']
         except:
-            ic-nil = None
+            ic_nil = None
         try:
-            ic-ore = data['ic']['OperatingExpenses']
+            ic_ore = data['ic']['OperatingExpenses']
         except:
-            ic-ore = None
+            ic_ore = None
         try:
-            cf-nil = data['cf']['NetIncomeLoss']
+            cf_nil = data['cf']['NetIncomeLoss']
         except:
-            cf-nil = None
+            cf_nil = None
         try:
-            cf-ipn = data['cf']['InterestPaidNet']
+            cf_ipn = data['cf']['InterestPaidNet']
         except:
-            cf-ipn = None
+            cf_ipn = None
         try:
-            bs-ass = data['bs']['Assets']
+            bs_ass = data['bs']['Assets']
         except:
-            bs-ass = None
+            bs_ass = None
         try:
-            bs-lia = data['bs']['Liabilities']
+            bs_lia = data['bs']['Liabilities']
         except:
-            bs-lia = None
+            bs_lia = None
         try:
-            bs-itn = data['bs']['InventoryNet']
+            bs_itn = data['bs']['InventoryNet']
         except:
-            bs-itn = None
-        stocks.append([sym['symbol'], ic-grp, ic-nil, ic-ore, cf-nil, cf-ipc ,bs-ass, bs-lia, bs-itn, r.json()['data']['filedDate']])
+            bs_itn = None
+        stocks.append([sym['symbol'], ic_grp, ic_nil, ic_ore, cf_nil, cf_ipc ,bs_ass, bs_lia, bs_itn, r.json()['data']['filedDate']])
         
     return stocks
 
