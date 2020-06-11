@@ -135,11 +135,11 @@ def add_companies():
         print(i)
         try:
             r = requests.get('https://finnhub.io/api/v1/stock/financials-reported?symbol=' + str(sym['symbol']) + '&token=bqmgk37rh5rc5ul5lcs0')
+            data = r.json()['data'][0]['report']
+            data1 = r.json()['data'][1]['report']
         except:
             ValueError
             continue
-        data = r.json()['data'][0]['report']
-        data1 = r.json()['data'][1]['report']
         try:
             ic_grp = data['ic']['GrossProfit']
         except:
