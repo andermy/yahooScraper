@@ -127,7 +127,10 @@ class stockMongo():
 
 def add_companies():
     symbols = requests.get('https://finnhub.io/api/v1/stock/symbol?exchange=US&token=bqmgk37rh5rc5ul5lcs0')
-    stocks = []
+    report = []
+    ic = []
+    bs = []
+    cf = []
     i = 0
     titles = ['symbol', 'ic-grossporfit', 'ic-netincomeloss', 'ic-operatingexpences', 'cf-netincomeloss', 'cf-interestpaidnet', 'bs-assets', 'bs-liabilities', 'bs-inventorynet', 'filesdate']
     for sym in symbols.json():
@@ -136,10 +139,14 @@ def add_companies():
         try:
             r = requests.get('https://finnhub.io/api/v1/stock/financials-reported?symbol=' + str(sym['symbol']) + '&token=bqmgk37rh5rc5ul5lcs0')
             data = r.json()['data'][0]['report']
-            stocks.append([sym['symbol'], data['ic']['GrossProfit'], data['ic']['NetIncomeLoss'],data['ic']['OperatingExpenses'],data['cf']['NetIncomeLoss'], data['cf']['InterestPaidNet'], data['bs']['Assets'], data['bs']['Liabilities'], data['bs']['InventoryNet'], r.json()['data']['filedDate']])
+            report.append([sym['symbol'], data.keys()])
+            bs.append([sym['symbol'], data['bs'].keys()])
+            ic.append([sym['symbol'], data['ic'].keys()])
+            cf.append([sym['symbol'], data['cf'].keys()])
+            #stocks.append([sym['symbol'], data['ic']['GrossProfit'], data['ic']['NetIncomeLoss'],data['ic']['OperatingExpenses'],data['cf']['NetIncomeLoss'], data['cf']['InterestPaidNet'], data['bs']['Assets'], data['bs']['Liabilities'], data['bs']['InventoryNet'], r.json()['data']['filedDate']])
         except:
             ValueError
-    return titles, stocks
+    return report, bs, ic, cf
 
 def main():  
     m = stockMongo()
