@@ -13,7 +13,10 @@ def iterateYahooOptions(symbol, num):
     for day in range(0,num):
         print(day)
         date += datetime.timedelta(days=1)
-        options.append(getYahooOptions(symbol, date))
+        try:
+            options.append(getYahooOptions(symbol, date))
+        except:
+            print("can' complete rest")
     
     options = pd.concat(options)
     #options = options.set_index('date')
