@@ -11,7 +11,6 @@ def iterateYahooOptions(symbol, num):
     options = []
 
     for day in range(0,num):
-        print(day)
         date += datetime.timedelta(days=1)
         try:
             options.append(getYahooOptions(symbol, date))
@@ -36,7 +35,6 @@ def getYahooOptions(symbol, options_day):
     contracts_data = []
     if tables != []:
         try:
-            print(datestamp)
             for i in range(0, len(content.find_all("table"))):
                 options_tables.append(tables[i])
 
@@ -60,6 +58,7 @@ def getYahooOptions(symbol, options_day):
         except:
             ValueError
             print("Table is not empty, but can't read")
+            print(symbol)
 
     return pd.DataFrame(contracts_data, columns=call_info)
     
@@ -142,6 +141,8 @@ def add_companies():
             data1 = r.json()['data'][1]['report']
         except:
             ValueError
+            print(sym['symbol'])
+            print("no response")
             continue
         try:
             ic_grp = data['ic']['GrossProfit']
@@ -216,7 +217,10 @@ def main():
     for sym in symbols:
         prices = iterateYahooOptions(sym['sym'], 500)
         m.update_options(sym['sym'], prices)
-        print("Yes")
+        if len(prices==0):
+            print(sym['sym'])
+        
+        
 
 if __name__ == "__main__":  
     main()
