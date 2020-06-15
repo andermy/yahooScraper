@@ -215,9 +215,15 @@ def main():
     m = stockMongo()
     symbols = m.get_symbols()
     for sym in symbols:
-        prices = iterateYahooOptions(sym['sym'], 500)
-        m.update_options(sym['sym'], prices)
+        prices = []
+        try:
+            prices = iterateYahooOptions(sym['sym'], 500)
+            m.update_options(sym['sym'], prices)
+        except:
+            print("Not possible to store:")
+            print(sym['sym'])
         if len(prices==0):
+            print("No prices:")
             print(sym['sym'])
         
         
