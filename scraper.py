@@ -100,7 +100,7 @@ class stockMongo():
             print("'" + symbol + "'" + " added to the database")
     
     def get_symbols(self):
-        tickers = self.stock_data.symbols.find()
+        tickers = self.stock_data.symbols.find(no_cursor_timeout=True)
 
         return tickers
 
