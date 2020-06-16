@@ -10,10 +10,30 @@ def iterateYahooOptions(symbol, num):
     date = get_datestamp()
     options = []
 
-    for day in range(0,num):
-        date += datetime.timedelta(days=1)
+    dates = [
+        1592524800,
+        1593129600,
+        1593648000,
+        1594339200,
+        1594944000,
+        1595548800,
+        1596153600,
+        1597968000,
+        1600387200,
+        1605830400,
+        1608249600,
+        1610668800,
+        1623974400,
+        1631836800,
+        1642723200,
+        1655424000,
+        1663286400
+    ]
+
+    for day in dates:
+        #date += datetime.timedelta(days=1)
         try:
-            options.append(getYahooOptions(symbol, date))
+            options.append(getYahooOptions(symbol, day))
         except:
             print("can' complete rest")
     
@@ -23,10 +43,10 @@ def iterateYahooOptions(symbol, num):
 
 def getYahooOptions(symbol, options_day):
 
-    datestamp = int(time.mktime(options_day.timetuple())) 
+    #datestamp = int(time.mktime(options_day.timetuple())) 
     today = datetime.datetime.now()
 
-    data_url = "https://finance.yahoo.com/quote/"+ str(symbol) +"/options?date=" + str(datestamp)
+    data_url = "https://finance.yahoo.com/quote/"+ str(symbol) +"/options?date=" + str(options_day)
     call_info = ['type','in-money', 'date','contract', 'strike-date', 'last_trade', 'strike', 'last', 'bid', 'ask', 'volume', 'iv']
     data_html = requests.get(data_url)
     content = BeautifulSoup(data_html.text, "html.parser")
@@ -214,10 +234,13 @@ def add_companies():
 def main():  
     m = stockMongo()
     symbols = m.get_symbols()
+    tickers = []
     for sym in symbols:
+        tickers.append(sym['sym'])
+    for tick in tickers:
         prices = []
         try:
-            prices = iterateYahooOptions(sym['sym'], 500)
+            prices = iterateYahooOptions(tick, 500)
             m.update_options(sym['sym'], prices)
         except:
             print("Not possible to store:")
