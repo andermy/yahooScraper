@@ -323,11 +323,11 @@ def main():
             m.update_options(sym['sym'], prices)
         except:
             print("Not possible to store:")
-            print(sym['sym'])
+            print(tick)
         if len(prices)==0:
             print("No prices:")
-            print(sym['sym'])
-            m.remove(sym['sym'])
+            print(tick)
+            m.remove(tick)
         
         
 
