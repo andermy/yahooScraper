@@ -4,7 +4,6 @@ import datetime
 import time
 import pandas as pd
 from pymongo import * 
-from lxml import html
 import json
 from collections import OrderedDict
 
