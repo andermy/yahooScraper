@@ -326,8 +326,8 @@ def main():
         if len(prices)==0:
             print("No prices:")
             print(tick)
-            m = stockMongo()
-            m.remove(tick)
+            #m = stockMongo()
+            #m.remove(tick)
         
         
 
