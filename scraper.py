@@ -13,8 +13,8 @@ def iterateYahooOptions(symbol, num):
     options = []
 
     dates = [
-        1592524800,
-        1593129600,
+        #1592524800,
+        #1593129600,
         1593648000,
         1594339200,
         1594944000,
@@ -74,6 +74,7 @@ def getYahooOptions(symbol, options_day):
                     for td in BeautifulSoup(str(contract[1]), "html.parser").find_all("td"):
                         contract_data.append(td.text)
                     if i == 0:
+                        #op_date = datetime.fromtimestamp(options_day)
                         contracts_data.append(["Call", contract[0], today, contract_data[0], options_day, datetime.datetime.strptime(contract_data[1][:10],'%Y-%m-%d'), contract_data[2], contract_data[3], contract_data[4], contract_data[5], contract_data[8], contract_data[10]])
                     else:
                         contracts_data.append(["Put", contract[0], today, contract_data[0], options_day, datetime.datetime.strptime(contract_data[1][:10],'%Y-%m-%d'), contract_data[2], contract_data[3], contract_data[4], contract_data[5], contract_data[8], contract_data[10]])
@@ -319,7 +320,8 @@ def main():
         prices = []
         try:
             prices = iterateYahooOptions(tick, 500)
-            m.update_options(sym['sym'], prices)
+            prices['strike-date'] = pd.to_datetime(prices['strike-date'], unit='s')
+            m.update_options(tick, prices)
         except:
             print("Not possible to store:")
             print(tick)
