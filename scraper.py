@@ -231,90 +231,73 @@ class stockMongo():
         op['last_trade'] = pd.to_datetime(op['last_trade'], "%Y-%m-%d")
         op = op.set_index('date')
         return op
+    
+    #
+    # Updates the database fetching data for all symbols since last 
+    # date in the data until today
+    #
+    def update_stockprices(self):
+        tickers = self.stock_data.symbols.find()
+        for ticker in tickers:
+            tickerTimeline = self.get_stock_data(ticker['sym'])
+            if len(tickerTimeline) > 0:
+                newestDate = max(tickerTimeline.index)
+                self.fetchInterval_stock_data(datetime.datetime.strptime(newestDate, "%Y-%m-%d %H:%M:%S"), 
+                                    datetime.datetime.now(),
+                                    symbol=ticker["sym"])
+            else:
+                self.fetchInterval_stock_data(datetime.datetime(2000, 1, 1),
+                                    datetime.datetime.now(),
+                                    symbol=ticker["sym"]) 
+    #
+    # Fetches symbol data for the interval between startDate and endDate
+    # If the symbol is not None, all symbols found in the database are
+    # updated.
+    #
+    def fetchInterval_stock_data(self, startDate, endDate, symbol=None):
+        date = None
+        #try:
+        #    sdate = datetime.strptime(startDate, "%Y-%m-%d %H:%M:%S")
+        #    edate = datetime.strptime(endDate, "%Y/%m/%d")
+        #except ValueError:
+        #    print ("Error: invalid provided date format (expected yyyy/mm/dd)")
+        #    return
+        if symbol == None:
+            symbols = self.stock_data.symbols.find()
+        else:
+            symbols = self.stock_data.symbols.find ({'sym':symbol})
+        for symbol in symbols:
+            
+            data = self.get_finnhub_prices(symbol['sym'], startDate, endDate)
 
-def add_companies():
-    symbols = requests.get('https://finnhub.io/api/v1/stock/symbol?exchange=US&token=bqmgk37rh5rc5ul5lcs0')
-    stocks = []
-    i = 0
-    titles = ['symbol', 'ic-grossporfit', 'ic-netincomeloss', 'ic-operatingexpences', 'cf-netincomeloss', 'cf-interestpaidnet', 'bs-assets', 'bs-liabilities', 'bs-inventorynet', 'filesdate']
-    for sym in symbols.json():
-        i = i + 1
-        print(i)
-        try:
-            r = requests.get('https://finnhub.io/api/v1/stock/financials-reported?symbol=' + str(sym['symbol']) + '&token=bqmgk37rh5rc5ul5lcs0')
-            data = r.json()['data'][0]['report']
-            data1 = r.json()['data'][1]['report']
-        except:
-            ValueError
-            print(sym['symbol'])
-            print("no response")
-            continue
-        try:
-            ic_grp = data['ic']['GrossProfit']
-        except:
-            try:
-                ic_grp = data1['ic']['GrossProfit']
-            except:
-                ic_grp = None
-        try:
-            ic_nil = data['ic']['NetIncomeLoss']
-        except:
-            try:
-                ic_nil = data1['ic']['NetIncomeLoss']
-            except:
-                ic_nil = None
-        try:
-            ic_ore = data['ic']['OperatingExpenses']
-        except:
-            try:
-                ic_ore = data1['ic']['OperatingExpenses']
-            except:
-                ic_ore = None
-        try:
-            cf_nil = data['cf']['NetIncomeLoss']
-        except:
-            try:
-                cf_nil = data1['cf']['NetIncomeLoss']
-            except:
-                cf_nil = None
-        try:
-            cf_ipn = data['cf']['InterestPaidNet']
-        except:
-            try:
-                cf_ipn = data1['cf']['InterestPaidNet']
-            except:
-                cf_ipn = None
-        try:
-            bs_ass = data['bs']['Assets']
-        except:
-            try:
-                bs_ass = data1['bs']['Assets']
-            except:
-                bs_ass = None
-        try:
-            bs_lia = data['bs']['Liabilities']
-        except:
-            try:
-                bs_lia = data['bs']['Liabilities']
-            except:
-                bs_lia = None
-        try:
-            bs_itn = data['bs']['InventoryNet']
-        except:
-            try:
-                bs_itn = data['bs']['InventoryNet']
-            except:
-                bs_itn = None
-        try:
-            date = r.json()['data'][0]['filedDate']
-        except:
-            try:
-                date = r.json()['data'][1]['filedDate']
-            except:
-                date = None
-        stocks.append([sym['symbol'], ic_grp, ic_nil, ic_ore, cf_nil, cf_ipn ,bs_ass, bs_lia, bs_itn, date])
-        
-    return stocks
+            print("Adding '[" + str(startDate) +", " + str(endDate)  + "]' data for symbol '" 
+                + symbol['sym'] + "' (" + str(len(data)) + " entries)")
+            data.index = data.index.astype(str)
+
+            if len(data) > 0:
+                self.stock_data.pricedata.insert_one({'sym': symbol['sym'], 'timeline': data.to_dict()})
+            
+    #
+    # Collects stock historic data from finnhub.io
+    #
+    def get_finnhub_prices(self, symbol, startDate, endDate):
+        data = requests.get('https://finnhub.io/api/v1/stock/candle?symbol=' + str(symbol) + '&resolution=D&from='+str(int(startDate.timestamp()))+'&to='+str(int(endDate.timestamp()))+'&token=bqmgk37rh5rc5ul5lcs0')
+        datap = pd.DataFrame(data.json())
+        datap['t'] = pd.to_datetime(datap['t'], unit='s')
+        datap = datap.set_index('t')
+        datap = datap.drop(['s'], axis=1)
+        return datap
+
+    #
+    # Get pricedata from mongoDB
+    #
+    def get_stock_data(self, symbol):
+        symbols = self.stock_data.pricedata.find({'sym': symbol})
+        cleanSymbols = []
+        for s in symbols:
+            df = pd.DataFrame.from_records(s['timeline'])
+            cleanSymbols.append(df)
+        return pd.concat(cleanSymbols)
 
 def main():  
     m = stockMongo()
