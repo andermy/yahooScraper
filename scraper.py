@@ -201,10 +201,10 @@ class stockMongo():
     def update_options(self, symbol, data):
         if len(data) > 0:
             data.index = data.index.astype(str)
-            self.stock_data.optionsdata.insert_one({'sym': symbol, 'options': data.to_dict()})
+            self.stock_data.options_data.insert_one({'sym': symbol, 'options': data.to_dict()})
 
     def get_options(self, symbol):
-        symbols = self.stock_data.optionsdata.find({'sym': symbol})
+        symbols = self.stock_data.options_data.find({'sym': symbol})
         cleanSymbols = []
         for s in symbols:
             df = pd.DataFrame.from_records(s['options'])
