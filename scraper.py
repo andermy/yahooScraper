@@ -300,8 +300,9 @@ def main():
             dates = get_dates()
             for day in dates:
                 try:
-                    prices = getYahooOptions(tick, day)
+                    prices = getYahooOptions(tick, day) 
                     prices['strike-date'] = pd.to_datetime(prices['strike-date'], unit='s')
+                    m = stockMongo()
                     m.update_options(tick, prices)
                 except:
                     print("Not possible to store:")
