@@ -8,9 +8,7 @@ import json
 from collections import OrderedDict
 
 
-def iterateYahooOptions(symbol, num):
-    date = get_datestamp()
-    options = []
+def get_dates():
 
     dates = [
         #1592524800,
@@ -38,16 +36,7 @@ def iterateYahooOptions(symbol, num):
         1663286400
     ]
 
-    for day in dates:
-        #date += datetime.timedelta(days=1)
-        try:
-            options.append(getYahooOptions(symbol, day))
-        except:
-            ValueError
-    
-    options = pd.concat(options)
-    #options = options.set_index('date')
-    return options
+    return dates
 
 def getYahooOptions(symbol, options_day):
 
@@ -308,17 +297,22 @@ def main():
     for tick in tickers:
         prices = []
         try:
-            prices = iterateYahooOptions(tick, 500)
-            prices['strike-date'] = pd.to_datetime(prices['strike-date'], unit='s')
-            m.update_options(tick, prices)
+            dates = get_dates()
+            for day in dates:
+                try:
+                    prices = getYahooOptions(tick, day)
+                    prices['strike-date'] = pd.to_datetime(prices['strike-date'], unit='s')
+                    m.update_options(tick, prices)
+                except:
+                    print("Not possible to store:")
+                    print(tick)
+                if len(prices)==0:
+                    print("No prices:")
+                    print(tick)
+                    #m = stockMongo()
+                    #m.remove(tick)
         except:
-            print("Not possible to store:")
-            print(tick)
-        if len(prices)==0:
-            print("No prices:")
-            print(tick)
-            #m = stockMongo()
-            #m.remove(tick)
+            print("No dates")
         
         
 if __name__ == "__main__":  
