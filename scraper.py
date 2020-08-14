@@ -17,13 +17,13 @@ def get_dates():
         #1594339200,
         #1594944000,
         #1595548800,
-        1596153600,
-        1596758400,
+        #1596153600,
+        #1596758400,
         1597363200,
         1597968000,
-        1600387200,
         1598572800,
         1599177600,
+        1599782400,
         1600387200,
         1605830400,
         1602806400,
@@ -80,70 +80,34 @@ def getYahooOptions(symbol, options_day):
 
     return pd.DataFrame(contracts_data, columns=call_info)
 
-def get_headers():
-    return {"accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-            "accept-encoding": "gzip, deflate, br",
-            "accept-language": "en-GB,en;q=0.9,en-US;q=0.8,ml;q=0.7",
-            "cache-control": "max-age=0",
-            "dnt": "1",
-            "sec-fetch-dest": "document",
-            "sec-fetch-mode": "navigate",
-            "sec-fetch-site": "none",
-            "sec-fetch-user": "?1",
-            "upgrade-insecure-requests": "1",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.122 Safari/537.36"}
-
-
-def parse(ticker):
-    url = "http://finance.yahoo.com/quote/%s?p=%s" % (ticker, ticker)
-    response = requests.get(
-        url, verify=False, headers=get_headers(), timeout=30)
-    print("Parsing %s" % (url))
-    parser = html.fromstring(response.text)
-    summary_table = parser.xpath(
-        '//div[contains(@data-test,"summary-table")]//tr')
-    summary_data = OrderedDict()
-    other_details_json_link = "https://query2.finance.yahoo.com/v10/finance/quoteSummary/{0}?formatted=true&lang=en-US&region=US&modules=summaryProfile%2CfinancialData%2CrecommendationTrend%2CupgradeDowngradeHistory%2Cearnings%2CdefaultKeyStatistics%2CcalendarEvents&corsDomain=finance.yahoo.com".format(
-        ticker)
-    summary_json_response = requests.get(other_details_json_link)
+def get_yahoo_stocks(symbol):
+    r = requests.get("https://finance.yahoo.com/quote/" + str(symbol) + "?p="+str(symbol)).text
+    soup = BeautifulSoup(r,'html.parser')
+    alldata = soup.find_all('tbody')
     try:
-        json_loaded_summary = json.loads(summary_json_response.text)
-        summary = json_loaded_summary["quoteSummary"]["result"][0]
-        y_Target_Est = summary["financialData"]["targetMeanPrice"]['raw']
-        earnings_list = summary["calendarEvents"]['earnings']
-        eps = summary["defaultKeyStatistics"]["trailingEps"]['raw']
-        datelist = []
-
-        for i in earnings_list['earningsDate']:
-            datelist.append(i['fmt'])
-        earnings_date = ' to '.join(datelist)
-
-        for table_data in summary_table:
-            raw_table_key = table_data.xpath(
-                './/td[1]//text()')
-            raw_table_value = table_data.xpath(
-                './/td[2]//text()')
-            table_key = ''.join(raw_table_key).strip()
-            table_value = ''.join(raw_table_value).strip()
-            summary_data.update({table_key: table_value})
-        summary_data.update({'1y Target Est': y_Target_Est, 'EPS (TTM)': eps,
-                             'Earnings Date': earnings_date, 'ticker': ticker,
-                             'url': url})
-        return summary_data
-    except ValueError:
-        print("Failed to parse json response")
-        return {"error": "Failed to parse json response"}
+        table1 = alldata[0].find_all('tr')
     except:
-        return {"error": "Unhandled Error"}
+        table1=None
+    try:
+        table2 = alldata[1].find_all('tr')
+    except:
+        table2 = None
+    l={}
 
-def get_yahoo_financial(symbol):
-    url = "https://finance.yahoo.com/quote/AAPL/financials?p=AAPL"
-    r = requests.get(url)
-    content = BeautifulSoup(r.text, "html.parser")
-    tables = content.find_all("table")
-
-    other_details_json_link = "https://query2.finance.yahoo.com/v10/finance/quoteSummary/{0}?formatted=true&lang=en-US®ion=US&modules=summaryProfile%2CfinancialData%2CrecommendationTrend%2CupgradeDowngradeHistory%2Cearnings%2CdefaultKeyStatistics%2CcalendarEvents&corsDomain=finance.yahoo.com".format(
-        ticker)
+    for i in range(0,len(table1)):
+        try:
+            table1_td = table1[i].find_all('td')
+        except:
+            table1_td = None
+        if table1_td[0].text == 'Avg. Volume':     
+            l['Avg_volume'] = table1_td[1].text
+        else:
+            l[table1_td[0].text] = table1_td[1].text
+            
+    l['date'] = datetime.datetime.now()
+    
+    return l
+        
 
 def get_datestamp():  
 
@@ -159,6 +123,23 @@ def get_datestamp():
 
     return next_close
 
+def iron_condor_price(x):
+    s = -x['priceCHi']+x['priceCLo']+x['pricePHi']-x['pricePLo']
+    
+    return s/(x['strikePHi']-x['strikePLo'])
+
+def iron_condor_value(x):
+    s = 0
+    if x['c'] >= x['strikeCLo']:
+        s = s - x['c'] + x['strikeCLo']
+    if x['c'] >= x['strikeCHi']:
+        s = s + x['c'] - x['strikeCHi']
+    if x['c'] <= x['strikePHi']:
+        s = s - x['c'] + x['strikePHi']
+    if x['c'] <= x['strikePLo']:
+        s = s + x['c'] - x['strikePLo']
+    #/(x['strikeP360']-x['strikeP350'])
+    return s
 
 class stockMongo():
 
@@ -202,6 +183,15 @@ class stockMongo():
         if len(data) > 0:
             data.index = data.index.astype(str)
             self.stock_data.options_data.insert_one({'sym': symbol, 'options': data.to_dict()})
+    
+    def update_stocks(self, symbol, data):
+        if len(data) > 0:
+            self.stock_data.stock_price.insert_one({'sym': symbol, 'date': datetime.datetime.now() ,'stockdata': data})
+    
+    def update_edited_options(self, symbol, data):
+        if len(data) > 0:
+            data.index = data.index.astype(str)
+            self.stock_data.options_data.insert_one({'sym': symbol, 'options': data.to_dict()})
 
     def get_options(self, symbol):
         symbols = self.stock_data.options_data.find({'sym': symbol})
@@ -231,11 +221,11 @@ class stockMongo():
             tickerTimeline = self.get_stock_data(ticker['sym'])
             if len(tickerTimeline) > 0:
                 newestDate = max(tickerTimeline.index)
-                self.fetchInterval_stock_data(datetime.datetime.strptime(newestDate, "%Y-%m-%d %H:%M:%S"), 
+                self.fetchInterval_stock_data(datetime.datetime.strptime(newestDate, "%Y-%m-%d"), 
                                     datetime.datetime.now(),
                                     symbol=ticker["sym"])
             else:
-                self.fetchInterval_stock_data(datetime.datetime(2000, 1, 1),
+                self.fetchInterval_stock_data(datetime.datetime(2020, 1, 1),
                                     datetime.datetime.now(),
                                     symbol=ticker["sym"]) 
     #
@@ -283,10 +273,69 @@ class stockMongo():
     def get_stock_data(self, symbol):
         symbols = self.stock_data.pricedata.find({'sym': symbol})
         cleanSymbols = []
-        for s in symbols:
-            df = pd.DataFrame.from_records(s['timeline'])
-            cleanSymbols.append(df)
-        return pd.concat(cleanSymbols)
+        if symbols.count() > 0:
+            for s in symbols:
+                df = pd.DataFrame.from_records(s['timeline'])
+                cleanSymbols.append(df)
+            return pd.concat(cleanSymbols)
+        else:
+            return []
+
+def edit_options():
+
+    apple = apple.drop(['volume', 'iv', 'in-money', 'bid', 'ask','last_trade', 'contract'], axis=1)
+    apple = apple.reset_index()
+    apple = apple.set_index(['strike-date', 'type'])
+    apple['date'] = pd.to_datetime(apple['date']).dt.strftime('%m-%d-%Y')
+    apple['date'] = pd.to_datetime(apple['date'])
+    strike_pivot = apple.pivot_table(columns="strike-date", values="date", aggfunc=np.count_nonzero)
+    strike_cols = strike_pivot.columns
+    
+    apl = m.get_finnhub_prices('AAPL', min(apple['date']), max(apple['date']))
+    apl['date'] = apl.index
+    apl = apl.reset_index()
+    apl = apl.drop(['h', 'l', 'o', 'v','t'], axis=1)
+
+    new_apple = []
+    apple2 = apple
+    for cols in strike_cols:
+        apple2 = apple2.reset_index()
+        apple2 = apple2.set_index(['type','strike-date'])
+        apple_pivot_call = apple2.loc[('Call', cols)]
+        strike_pivot = apple_pivot_call.pivot_table(columns="strike", values="date", aggfunc=np.count_nonzero)
+        strike_value_cols = strike_pivot.columns
+        apple_pivot_put = apple2.loc[('Put', cols)]
+        strike_pivot = apple_pivot_put.pivot_table(columns="strike", values="date", aggfunc=np.count_nonzero)
+        strike_value_puts = strike_pivot.columns
+        
+        apple2 = apple2.reset_index()
+        apple2 = apple2.set_index(['type', 'strike','strike-date'])
+
+        for i in range(len(strike_value_cols)-1):
+            for j in range(len(strike_value_puts)-1):
+                aCLo = apple2.loc[('Call', strike_value_cols[i], cols)]
+                aCLo = aCLo.reset_index()
+                #aCLo = aCLo.drop(['type', 'strike-date'], axis=1)
+                aCLo.rename(columns = {'last':'priceCLo', 'strike': 'strikeCLo'}, inplace = True)
+                aCHi = apple2.loc[('Call', strike_value_cols[i+1], cols)]
+                aCHi = aCHi.reset_index()
+                #aCHi = aCHi.drop(['type', 'strike-date'], axis=1)
+                aCHi.rename(columns = {'last':'priceCHi', 'strike': 'strikeCHi'}, inplace = True)
+                aPLo = apple2.loc[('Put', strike_value_puts[j], cols)]
+                aPLo = aPLo.reset_index()
+                #aPLo = aPLo.drop(['type', 'strike-date'], axis=1)
+                aPLo.rename(columns = {'last':'pricePLo', 'strike': 'strikePLo'}, inplace = True)
+                aPHi = apple2.loc[('Put', strike_value_puts[j+1], cols)]
+                aPHi = aPHi.reset_index()
+                #aPHi = aPHi.drop(['type', 'strike-date'], axis=1)
+                aPHi.rename(columns = {'last':'pricePHi', 'strike': 'strikePHi'}, inplace = True)
+
+                a = pd.merge(aCLo, apl, on='date')
+                a = pd.merge(a, aCHi, on='date')
+                a = pd.merge(a, aPLo, on='date')
+                a = pd.merge(a, aPHi, on='date')
+
+                new_apple.append(a)
 
 def main():  
     m = stockMongo()
@@ -315,6 +364,17 @@ def main():
         except:
             print("No dates")
         
-        
+    for tick in tickers:
+        try:
+            prices = get_yahoo_stocks(tick)
+            m = stockMongo()
+            m.update_stocks(tick, prices)
+        except:
+            print("Not possible to store:")
+            print(tick)
+        if len(prices)==0:
+            print("No prices:")
+            print(tick)
+                   
 if __name__ == "__main__":  
     main()
