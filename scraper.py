@@ -105,8 +105,13 @@ def get_yahoo_stocks(symbol):
             l[table1_td[0].text] = table1_td[1].text
             
     l['date'] = datetime.datetime.now()
+
+    info = ['Previous Close', 'Volume', 'Date']
+    b = []
+    b.append([float(l['Previous Close']), l['Volume'], l['date']])
+    c = pd.DataFrame(b, columns=info)
     
-    return l
+    return c
         
 
 def get_datestamp():  
@@ -186,6 +191,7 @@ class stockMongo():
     
     def update_stocks(self, symbol, data):
         if len(data) > 0:
+            data.index = data.index.astype(str)
             self.stock_data.stock_price.insert_one({'sym': symbol, 'date': datetime.datetime.now() ,'stockdata': data})
     
     def update_edited_options(self, symbol, data):
@@ -198,6 +204,24 @@ class stockMongo():
         cleanSymbols = []
         for s in symbols:
             df = pd.DataFrame.from_records(s['options'])
+            cleanSymbols.append(df)
+        op = pd.concat(cleanSymbols)
+        op['strike'] = pd.to_numeric(op['strike'],errors='coerce')
+        op['last'] = pd.to_numeric(op['last'],errors='coerce')
+        op['bid'] = pd.to_numeric(op['bid'],errors='coerce')
+        op['ask'] = pd.to_numeric(op['ask'],errors='coerce')
+        op['volume'] = pd.to_numeric(op['volume'],errors='coerce')
+        op['date'] = pd.to_datetime(op['date'], "%Y-%m-%d %H:%M:%S")
+        op['strike-date'] = pd.to_datetime(op['strike-date'], "%Y-%m-%d %H:%M:%S")
+        op['last_trade'] = pd.to_datetime(op['last_trade'], "%Y-%m-%d")
+        op = op.set_index('date')
+        return op
+    
+    def get_stocks(self, symbol):
+        symbols = self.stock_data.stock_price.find({'sym': symbol})
+        cleanSymbols = []
+        for s in symbols:
+            df = pd.DataFrame.from_records(s['stockdata'])
             cleanSymbols.append(df)
         op = pd.concat(cleanSymbols)
         op['strike'] = pd.to_numeric(op['strike'],errors='coerce')
