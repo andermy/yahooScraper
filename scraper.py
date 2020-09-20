@@ -23,12 +23,14 @@ def get_dates():
         #1597968000,
         #1598572800,
         #1599177600,
-        1599782400,
-        1600387200,
+        #1599782400,
+        #1600387200,
         1600992000,
         1601596800,
         1602201600,
         1602806400,
+        1603411200,
+        1604016000,
         1605830400,
         1608249600,
         1608249600,
@@ -198,7 +200,7 @@ class stockMongo():
             data.index = data.index.astype(str)
             self.stock_data.stock_price.insert_one({'sym': symbol, 'date': datetime.datetime.now() ,'stockdata': data.to_dict()})
     
-    def update_edited_options(self, symbol, data):
+    def update_edited_options(self, symbol, dataW):
         if len(data) > 0:
             data.index = data.index.astype(str)
             self.stock_data.options_data.insert_one({'sym': symbol, 'options': data.to_dict()})
@@ -225,7 +227,8 @@ class stockMongo():
         symbols = self.stock_data.pricedata.find({'sym': symbol})
         cleanSymbols = []
         for s in symbols:
-            df = pd.DataFrame.from_records(s['stockdata'])
+            print(s)
+            df = pd.DataFrame.from_records(s['timeline'])
             cleanSymbols.append(df)
         op = pd.concat(cleanSymbols)
         op['strike'] = pd.to_numeric(op['strike'],errors='coerce')
@@ -248,14 +251,16 @@ class stockMongo():
         for ticker in tickers:
             tickerTimeline = self.get_stock_data(ticker['sym'])
             if len(tickerTimeline) > 0:
-                newestDate = max(tickerTimeline.index)
-                self.fetchInterval_stock_data(datetime.datetime.strptime(newestDate, "%Y-%m-%d"), 
+                newestDate = max(tickerTimeline['date'])
+                print(ticker['sym'])
+                print(newestDate)
+                self.fetchInterval_stock_data(newestDate, 
                                     datetime.datetime.now(),
                                     symbol=ticker["sym"])
             else:
                 self.fetchInterval_stock_data(datetime.datetime(2020, 1, 1),
                                     datetime.datetime.now(),
-                                    symbol=ticker["sym"]) 
+                                    symbol=ticker["sym"])
     #
     # Fetches symbol data for the interval between startDate and endDate
     # If the symbol is not None, all symbols found in the database are
@@ -274,16 +279,20 @@ class stockMongo():
         else:
             symbols = self.stock_data.symbols.find ({'sym':symbol})
         for symbol in symbols:
-            
-            data = self.get_finnhub_prices(symbol['sym'], startDate, endDate)
+            try:
+                data = self.get_finnhub_prices(symbol['sym'], startDate, endDate)
 
-            print("Adding '[" + str(startDate) +", " + str(endDate)  + "]' data for symbol '" 
-                + symbol['sym'] + "' (" + str(len(data)) + " entries)")
-            data.index = data.index.astype(str)
+                print("Adding '[" + str(startDate) +", " + str(endDate)  + "]' data for symbol '" 
+                    + symbol['sym'] + "' (" + str(len(data)) + " entries)")
+                data.index = data.index.astype(str)
 
-            if len(data) > 0:
-                self.stock_data.pricedata.insert_one({'sym': symbol['sym'], 'timeline': data.to_dict()})
-            
+                if len(data) > 0:
+                    self.stock_data.pricedata.insert_one({'sym': symbol['sym'], 'timeline': data.to_dict()})
+            except:
+                import time
+                time.sleep(60)
+                print("Can't add '[" + str(startDate) +", " + str(endDate)  + "]' data for symbol '"
+                    + symbol['sym'])
     #
     # Collects stock historic data from finnhub.io
     #
@@ -291,6 +300,8 @@ class stockMongo():
         data = requests.get('https://finnhub.io/api/v1/stock/candle?symbol=' + str(symbol) + '&resolution=D&from='+str(int(startDate.timestamp()))+'&to='+str(int(endDate.timestamp()))+'&token=bqmgk37rh5rc5ul5lcs0')
         datap = pd.DataFrame(data.json())
         datap['t'] = pd.to_datetime(datap['t'], unit='s')
+        datap['date'] = datap['t']
+        #datap['t'] = datap['t'].dt.strftime('%Y-%m-%d')
         datap = datap.set_index('t')
         datap = datap.drop(['s'], axis=1)
         return datap

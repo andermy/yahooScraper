@@ -1,0 +1,155 @@
+[33mcommit a8a95c378ff9c073ee4e6e76b709421dd9535d71[m[33m ([m[1;36mHEAD -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m)[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Thu Sep 10 14:44:54 2020 +0200
+
+    stock price grab fix
+
+[33mcommit eec72ec04062f1ee0c3b87221a0c9b3964f61385[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Thu Sep 10 13:57:37 2020 +0200
+
+    new dates
+
+[33mcommit 95a8320cdc51458731546affba0091a4bf08b6dd[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Tue Aug 25 06:46:09 2020 +0200
+
+    new dates
+
+[33mcommit 0b1b314cfe16818f7834d7764f009a20b85ea8e4[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Sat Aug 15 20:06:53 2020 +0200
+
+    yahoo stockfetching with dataframe
+
+[33mcommit 428925b84685e306aef5e038888789a090c13fcd[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Fri Aug 14 07:56:21 2020 +0200
+
+    stockprice scraper
+
+[33mcommit 7e6a9f1c0f35893bbede849bf254656ffe76fc13[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Sun Aug 2 23:34:57 2020 +0200
+
+    mongo restore
+
+[33mcommit 9417bfa1c971cfc1601e6e2b018bea772ccbe3f5[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Sun Aug 2 23:26:44 2020 +0200
+
+    with mongo con
+
+[33mcommit ec747f0418869fa5bc9429a37d5bdfa1f14fd9c6[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Sun Aug 2 23:03:39 2020 +0200
+
+    bugfix mongo doc size
+
+[33mcommit 07b63c1b4561c045e9b5c1f8b1b7a60b65335834[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Fri Jul 31 13:50:12 2020 +0200
+
+    initial analtics
+
+[33mcommit 1e0347073e778ff37856843499996dfc8794584e[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Tue Jul 28 19:31:21 2020 +0200
+
+    new dates
+
+[33mcommit 8a648222f729cc50e0cc57bef800c0847e03f989[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Sat Jul 4 19:10:14 2020 +0200
+
+    Fix error strike-date
+
+[33mcommit e2b0169074090449f7e5daa4382b9a880af22d03[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Sat Jun 27 07:46:08 2020 +0200
+
+    No remove of symbols
+
+[33mcommit 92a0bcac407fa48a59544399db171e878966278a[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Fri Jun 19 20:10:01 2020 +0200
+
+    test
+
+[33mcommit 5114e868afc3cc9d14c55931ce755e3a2b4e47e0[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Fri Jun 19 19:00:40 2020 +0200
+
+    testy
+
+[33mcommit e5eb7f6213a1c2e025d744b228bf666511e526b9[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Fri Jun 19 07:17:25 2020 +0200
+
+    testy
+
+[33mcommit 0b61a64c5e390baee0744a2ef13cb426d3135e47[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Fri Jun 19 07:10:21 2020 +0200
+
+    added remove symbols func
+
+[33mcommit db43ed344d79fdfa37cbec3605a0862204fb6ae0[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Tue Jun 16 15:53:44 2020 +0200
+
+    hardcoded dates
+
+[33mcommit dcb6d31418d176d29644dd217deb5fec81c2f4ec[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Mon Jun 15 21:34:21 2020 +0200
+
+    added no cursor timeout
+
+[33mcommit ce4ef285dbaa90f8d947038e561ae07d79beff8b[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Mon Jun 15 15:21:56 2020 +0200
+
+    exception for symbol iteration
+
+[33mcommit 06a5948436954cb60930224b032840889b02f738[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Sun Jun 14 19:06:47 2020 +0200
+
+    Update screen print messages
+
+[33mcommit c1d91e1497a4151e01c8d988069a9d432e0efbc6[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Sat Jun 13 08:11:40 2020 +0200
+
+    with exception for non working request
+
+[33mcommit 11970d54213fb16685ed79d719d2dbce7fee9736[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Sat Jun 13 08:07:00 2020 +0200
+
+    with exception for non working request
+
+[33mcommit bdd428ad4b950e35ab7e2d99ea548e3e860a758f[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Thu Jun 11 22:59:35 2020 +0200
+
+    test
+
+[33mcommit 8bfc2732a3483407903d989dd255b202959de79c[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Thu Jun 11 22:57:24 2020 +0200
+
+    test
+
+[33mcommit f9690fb3ff3e231b6dc3ece09f2ca50c887f754f[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Thu Jun 11 22:55:20 2020 +0200
+
+    test
+
+[33mcommit 85a6ed0701005fd01fa8b2903be70d1d0aea65b7[m
+Author: Myhr <anders.myhr@siemens.com>
+Date:   Thu Jun 11 22:14:52 2020 +0200
+
+    test
