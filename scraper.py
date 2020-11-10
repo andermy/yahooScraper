@@ -11,38 +11,24 @@ from collections import OrderedDict
 def get_dates():
 
     dates = [
-        #1592524800,
-        #1593129600,
-        #1593648000,
-        #1594339200,
-        #1594944000,
-        #1595548800,
-        #1596153600,
-        #1596758400,
-        #1597363200,
-        #1597968000,
-        #1598572800,
-        #1599177600,
-        #1599782400,
-        #1600387200,
-        #1600992000,
-        #1601596800,
-        #1602201600,
         1604620800,
         1605225600,
-        #1602806400,
-        1603411200,
-        1604016000,
-        1606435200,
         1605830400,
+        1606435200,
+        1607040000,
+        1607644800,
         1608249600,
         1608249600,
         1610668800,
+        1613692800,
+        1616112000,
+        1618531200,
         1623974400,
         1631836800,
         1642723200,
         1655424000,
         1663286400,
+        1674172800,
     ]
 
     return dates
@@ -189,7 +175,8 @@ class stockMongo():
             print("'" + value + "'" + " removed from the database")
 
     def get_symbols(self):
-        tickers = self.stock_data.symbols.find(no_cursor_timeout=True)
+        tickers = self.stock_data.symbols.find()
+        #tickers = self.stock_data.symbols.find(no_cursor_timeout=True)
 
         return tickers
 
@@ -249,21 +236,20 @@ class stockMongo():
     # Updates the database fetching data for all symbols since last 
     # date in the data until today
     #
-    def update_stockprices(self):
-        tickers = self.stock_data.symbols.find()
-        for ticker in tickers:
-            tickerTimeline = self.get_stock_data(ticker['sym'])
-            if len(tickerTimeline) > 0:
-                newestDate = max(tickerTimeline['date'])
-                print(ticker['sym'])
-                print(newestDate)
-                self.fetchInterval_stock_data(newestDate, 
-                                    datetime.datetime.now(),
-                                    symbol=ticker["sym"])
-            else:
-                self.fetchInterval_stock_data(datetime.datetime(2020, 1, 1),
-                                    datetime.datetime.now(),
-                                    symbol=ticker["sym"])
+    def update_stockprices(self, symbol):
+        
+        tickerTimeline = self.get_stock_data({'sym':symbol})
+        if len(tickerTimeline) > 0:
+            newestDate = max(tickerTimeline['date'])
+            print(ticker['sym'])
+            print(newestDate)
+            self.fetchInterval_stock_data(datetime.datetime.strptime(newestDate, "%Y-%m-%d"), 
+                                datetime.datetime.now(),
+                                symbol=ticker["sym"])
+        else:
+            self.fetchInterval_stock_data(datetime.datetime(2020, 1, 1),
+                                datetime.datetime.now(),
+                                symbol=ticker["sym"])
     #
     # Fetches symbol data for the interval between startDate and endDate
     # If the symbol is not None, all symbols found in the database are
@@ -322,62 +308,6 @@ class stockMongo():
             return pd.concat(cleanSymbols)
         else:
             return []
-
-def edit_options():
-
-    apple = apple.drop(['volume', 'iv', 'in-money', 'bid', 'ask','last_trade', 'contract'], axis=1)
-    apple = apple.reset_index()
-    apple = apple.set_index(['strike-date', 'type'])
-    apple['date'] = pd.to_datetime(apple['date']).dt.strftime('%m-%d-%Y')
-    apple['date'] = pd.to_datetime(apple['date'])
-    strike_pivot = apple.pivot_table(columns="strike-date", values="date", aggfunc=np.count_nonzero)
-    strike_cols = strike_pivot.columns
-    
-    apl = m.get_finnhub_prices('AAPL', min(apple['date']), max(apple['date']))
-    apl['date'] = apl.index
-    apl = apl.reset_index()
-    apl = apl.drop(['h', 'l', 'o', 'v','t'], axis=1)
-
-    new_apple = []
-    apple2 = apple
-    for cols in strike_cols:
-        apple2 = apple2.reset_index()
-        apple2 = apple2.set_index(['type','strike-date'])
-        apple_pivot_call = apple2.loc[('Call', cols)]
-        strike_pivot = apple_pivot_call.pivot_table(columns="strike", values="date", aggfunc=np.count_nonzero)
-        strike_value_cols = strike_pivot.columns
-        apple_pivot_put = apple2.loc[('Put', cols)]
-        strike_pivot = apple_pivot_put.pivot_table(columns="strike", values="date", aggfunc=np.count_nonzero)
-        strike_value_puts = strike_pivot.columns
-        
-        apple2 = apple2.reset_index()
-        apple2 = apple2.set_index(['type', 'strike','strike-date'])
-
-        for i in range(len(strike_value_cols)-1):
-            for j in range(len(strike_value_puts)-1):
-                aCLo = apple2.loc[('Call', strike_value_cols[i], cols)]
-                aCLo = aCLo.reset_index()
-                #aCLo = aCLo.drop(['type', 'strike-date'], axis=1)
-                aCLo.rename(columns = {'last':'priceCLo', 'strike': 'strikeCLo'}, inplace = True)
-                aCHi = apple2.loc[('Call', strike_value_cols[i+1], cols)]
-                aCHi = aCHi.reset_index()
-                #aCHi = aCHi.drop(['type', 'strike-date'], axis=1)
-                aCHi.rename(columns = {'last':'priceCHi', 'strike': 'strikeCHi'}, inplace = True)
-                aPLo = apple2.loc[('Put', strike_value_puts[j], cols)]
-                aPLo = aPLo.reset_index()
-                #aPLo = aPLo.drop(['type', 'strike-date'], axis=1)
-                aPLo.rename(columns = {'last':'pricePLo', 'strike': 'strikePLo'}, inplace = True)
-                aPHi = apple2.loc[('Put', strike_value_puts[j+1], cols)]
-                aPHi = aPHi.reset_index()
-                #aPHi = aPHi.drop(['type', 'strike-date'], axis=1)
-                aPHi.rename(columns = {'last':'pricePHi', 'strike': 'strikePHi'}, inplace = True)
-
-                a = pd.merge(aCLo, apl, on='date')
-                a = pd.merge(a, aCHi, on='date')
-                a = pd.merge(a, aPLo, on='date')
-                a = pd.merge(a, aPHi, on='date')
-
-                new_apple.append(a)
 
 def main():  
     m = stockMongo()
