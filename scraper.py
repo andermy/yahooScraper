@@ -11,14 +11,13 @@ from collections import OrderedDict
 def get_dates():
 
     dates = [
-        1604620800,
-        1605225600,
         1605830400,
         1606435200,
         1607040000,
         1607644800,
         1608249600,
-        1608249600,
+        1608768000,
+        1609372800,
         1610668800,
         1613692800,
         1616112000,
@@ -238,18 +237,16 @@ class stockMongo():
     #
     def update_stockprices(self, symbol):
         
-        tickerTimeline = self.get_stock_data({'sym':symbol})
+        tickerTimeline = self.get_stock_data(symbol)
         if len(tickerTimeline) > 0:
             newestDate = max(tickerTimeline['date'])
-            print(ticker['sym'])
-            print(newestDate)
             self.fetchInterval_stock_data(datetime.datetime.strptime(newestDate, "%Y-%m-%d"), 
                                 datetime.datetime.now(),
-                                symbol=ticker["sym"])
+                                symbol=symbol)
         else:
             self.fetchInterval_stock_data(datetime.datetime(2020, 1, 1),
                                 datetime.datetime.now(),
-                                symbol=ticker["sym"])
+                                symbol=symbol)
     #
     # Fetches symbol data for the interval between startDate and endDate
     # If the symbol is not None, all symbols found in the database are
