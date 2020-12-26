@@ -64,22 +64,23 @@ class stockMongo():
             self.stock_data.options_data.insert_one({'sym': symbol, 'options': data.to_dict()})
 
     def get_options(self, symbol):
-        symbols = self.stock_data.options_data.find({'sym': symbol})
+        symbols = self.stock_data.options_data2.find({'sym': symbol})
         cleanSymbols = []
         for s in symbols:
             df = pd.DataFrame.from_records(s['options'])
             cleanSymbols.append(df)
         op = pd.concat(cleanSymbols)
-        op['strike'] = pd.to_numeric(op['strike'],errors='coerce')
-        op['last'] = pd.to_numeric(op['last'],errors='coerce')
-        op['bid'] = pd.to_numeric(op['bid'],errors='coerce')
-        op['ask'] = pd.to_numeric(op['ask'],errors='coerce')
-        op['volume'] = pd.to_numeric(op['volume'],errors='coerce')
-        op['date'] = pd.to_datetime(op['date'], "%Y-%m-%d %H:%M:%S")
-        op['strike-date'] = pd.to_datetime(op['strike-date'], "%Y-%m-%d %H:%M:%S")
-        op['last_trade'] = pd.to_datetime(op['last_trade'], "%Y-%m-%d")
+        op['Strike'] = pd.to_numeric(op['Strike'],errors='coerce')
+        op['Last Price'] = pd.to_numeric(op['Last Price'],errors='coerce')
+        op['Bid'] = pd.to_numeric(op['Bid'],errors='coerce')
+        op['Ask'] = pd.to_numeric(op['Ask'],errors='coerce')
+        op['Volume'] = pd.to_numeric(op['Volume'],errors='coerce')
+        op['Open Interest'] = pd.to_numeric(op['Open Interest'],errors='coerce')
+        #op['date'] = pd.to_datetime(op['date'], "%Y-%m-%d %H:%M:%S")
+        #op['strike-date'] = pd.to_datetime(op['strike-date'], "%Y-%m-%d %H:%M:%S")
+        #op['Last Trade Date'] = pd.to_datetime(op['Last Trade Date'], "%Y-%m-%d")
         op = op.set_index('date')
-        return op
+        return op   
     
     def get_stocks(self, symbol):
         symbols = self.stock_data.pricedata.find({'sym': symbol})
@@ -203,15 +204,36 @@ def main():
                     m.update_options(tick, price_calls, now, 'call')
                     m.update_options(tick, price_puts, now, 'put')
                 except:
-                    print("Not possible to store:")
-                    print(tick)
-                if len(prices)==0:
-                    print("No prices:")
-                    print(tick)
-                    #m = stockMongo()
-                    #m.remove(tick)
+                    print("no prices")
+            
         except:
             print("No dates")
-                   
-if __name__ == "__main__":  
-    main()
+
+def main2():
+    m = stockMongo()
+    prices = []
+    try:
+        dates = options.get_expiration_dates('AAPL')
+        try:
+            prices = options.get_options_chain('AAPL', dates[14])
+            price_calls = pd.DataFrame.from_dict(prices['calls'])
+            price_puts = pd.DataFrame.from_dict(prices['puts'])
+            strike_date = datetime.datetime.strptime(dates[14], '%B %d, %Y')
+            price_calls['strike-date'] = strike_date
+            price_puts['strike-date'] = strike_date
+            now = datetime.datetime.now()
+            #now = datetime.datetime.strptime(now.strftime("%m/%d/%Y"),"%m/%d/%Y")
+            price_puts['date'] = now
+            price_calls['date'] = now
+            price_calls['type'] = 'call'
+            price_puts['type'] = 'put'
+            m = stockMongo()
+            m.update_options('AAPL', price_calls, now, 'call')
+            m.update_options('AAPL', price_puts, now, 'put')
+            print("Options updated and stored")
+        except:
+            print("no prices")
+    except:
+        print("No date")
+if __name__ == "__main__": 
+    main2()
