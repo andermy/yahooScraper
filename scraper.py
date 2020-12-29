@@ -308,7 +308,11 @@ class stockMongo():
 
 def main():  
     m = stockMongo()
-    for tick in ["AAPL"]:
+    symbols = m.get_symbols()
+    tickers = []
+    for sym in symbols:
+        tickers.append(sym['sym'])
+    for tick in tickers:
         prices = []
         try:
             dates = get_dates()

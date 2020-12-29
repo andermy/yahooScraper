@@ -7,7 +7,7 @@ from pymongo import *
 import json
 from collections import OrderedDict
 from yahoo_fin import options
-
+import asyncio
 
 class stockMongo():
 
@@ -175,39 +175,44 @@ class stockMongo():
             return pd.concat(cleanSymbols)
         else:
             return []
+async def collection_options(tick, day):
+    try:
+        prices = options.get_options_chain(tick, day)
+        price_calls = pd.DataFrame.from_dict(prices['calls'])
+        price_puts = pd.DataFrame.from_dict(prices['puts'])
+        strike_date = datetime.datetime.strptime(day, '%B %d, %Y')
+        price_calls['strike-date'] = strike_date
+        price_puts['strike-date'] = strike_date
+        now = datetime.datetime.now()
+        now = datetime.datetime.strptime(now.strftime("%m/%d/%Y"),"%m/%d/%Y")
+        price_puts['date'] = now
+        price_calls['date'] = now
+        price_calls['type'] = 'call'
+        price_puts['type'] = 'put'
+        m = stockMongo()
+        m.update_options(tick, price_calls, now, 'call')
+        m.update_options(tick, price_puts, now, 'put')
+    except:
+        pass
 
 def main():  
+    print("getting symbols")
     m = stockMongo()
     symbols = m.get_symbols()
     tickers = []
     for sym in symbols:
         tickers.append(sym['sym'])
+    iterations = []
+    print("adding iterations")
     for tick in tickers:
-        prices = []
-        try:
-            dates = options.get_expiration_dates(tick)
-            for day in dates:
-                try:
-                    prices = options.get_options_chain(tick, day)
-                    price_calls = pd.DataFrame.from_dict(prices['calls'])
-                    price_puts = pd.DataFrame.from_dict(prices['puts'])
-                    strike_date = datetime.datetime.strptime(day, '%B %d, %Y')
-                    price_calls['strike-date'] = strike_date
-                    price_puts['strike-date'] = strike_date
-                    now = datetime.datetime.now()
-                    now = datetime.datetime.strptime(now.strftime("%m/%d/%Y"),"%m/%d/%Y")
-                    price_puts['date'] = now
-                    price_calls['date'] = now
-                    price_calls['type'] = 'call'
-                    price_puts['type'] = 'put'
-                    m = stockMongo()
-                    m.update_options(tick, price_calls, now, 'call')
-                    m.update_options(tick, price_puts, now, 'put')
-                except:
-                    print("no prices")
-            
-        except:
-            print("No dates")
+        dates = options.get_expiration_dates(tick)
+        for day in dates:
+            iterations.append(collection_options(tick, day))
+    
+    loop = asyncio.get_event_loop()
+    print("running data collection")
+    loop.run_until_complete(asyncio.gather(*iterations))
+    loop.close()
 
 def main2():
     m = stockMongo()
@@ -236,4 +241,4 @@ def main2():
     except:
         print("No date")
 if __name__ == "__main__": 
-    main2()
+    main()
