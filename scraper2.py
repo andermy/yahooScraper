@@ -206,6 +206,9 @@ def main():
     print("adding iterations")
     for tick in tickers:
         dates = options.get_expiration_dates(tick)
+        if len(dates) == 0:
+            m = stockMongo()
+            m.remove(tick)
         for day in dates:
             iterations.append(collection_options(tick, day))
     
