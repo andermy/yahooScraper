@@ -175,7 +175,7 @@ class stockMongo():
             return pd.concat(cleanSymbols)
         else:
             return []
-async def collection_options(tick, day):
+def collect_options(tick, day):
     try:
         prices = options.get_options_chain(tick, day)
         price_calls = pd.DataFrame.from_dict(prices['calls'])
@@ -202,21 +202,16 @@ def main():
     tickers = []
     for sym in symbols:
         tickers.append(sym['sym'])
-    iterations = []
-    print("adding iterations")
+    print("running data collection")
     for tick in tickers:
         dates = options.get_expiration_dates(tick)
         if len(dates) == 0:
             m = stockMongo()
             m.remove(tick)
         for day in dates:
-            iterations.append(collection_options(tick, day))
+            collect_options(tick, day)
     
-    loop = asyncio.get_event_loop()
-    print("running data collection")
-    loop.run_until_complete(asyncio.gather(*iterations))
-    loop.close()
-
+    
 def main2():
     m = stockMongo()
     prices = []
