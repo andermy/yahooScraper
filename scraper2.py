@@ -207,7 +207,7 @@ def main():
         dates = options.get_expiration_dates(tick)
         if len(dates) == 0:
             m = stockMongo()
-            m.remove(tick)
+            #m.remove(tick)
         for day in dates:
             collect_options(tick, day)
     
