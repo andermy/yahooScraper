@@ -192,8 +192,9 @@ def collect_options(tick, day):
         m = stockMongo()
         m.update_options(tick, price_calls, now, 'call')
         m.update_options(tick, price_puts, now, 'put')
+        return True
     except:
-        pass
+        return False
 
 def main():  
     print("getting symbols")
@@ -203,13 +204,17 @@ def main():
     for sym in symbols:
         tickers.append(sym['sym'])
     print("running data collection")
+    fails = []
     for tick in tickers:
         dates = options.get_expiration_dates(tick)
         if len(dates) == 0:
             m = stockMongo()
             #m.remove(tick)
         for day in dates:
-            collect_options(tick, day)
+            val = collect_options(tick, day)
+            if not val:
+                fails.append(tick)
+    print(tick)
     
     
 def main2():
