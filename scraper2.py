@@ -58,7 +58,7 @@ class stockMongo():
             data.index = data.index.astype(str)
             self.stock_data.stock_price.insert_one({'sym': symbol, 'date': datetime.datetime.now() ,'stockdata': data.to_dict()})
     
-    def update_edited_options(self, symbol, dataW):
+    def update_edited_options(self, symbol, data):
         if len(data) > 0:
             data.index = data.index.astype(str)
             self.stock_data.options_data.insert_one({'sym': symbol, 'options': data.to_dict()})
@@ -208,9 +208,11 @@ def main():
     for tick in tickers:
         dates = options.get_expiration_dates(tick)
         if len(dates) == 0:
-            m = stockMongo()
+            print(tick)
+            #m = stockMongo()
             #m.remove(tick)
         for day in dates:
+            print("Starting: " + tick)
             val = collect_options(tick, day)
             if not val:
                 fails.append(tick)
