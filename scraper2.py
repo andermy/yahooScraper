@@ -206,44 +206,32 @@ def main():
     print("running data collection")
     fails = []
     for tick in tickers:
-        dates = options.get_expiration_dates(tick)
-        if len(dates) == 0:
+        try:
+            dates = options.get_expiration_dates(tick)
+            if len(dates) == 0:
+                print(tick +" has no optiondates")
+                #m = stockMongo()
+                #m.remove(tick)
+            for day in dates:
+                val = collect_options(tick, day)
+                if not val:
+                    fails.append(tick)
+        except:
             print(tick)
-            #m = stockMongo()
-            #m.remove(tick)
-        for day in dates:
-            print("Starting: " + tick)
-            val = collect_options(tick, day)
-            if not val:
-                fails.append(tick)
     print(tick)
     
     
-def main2():
-    m = stockMongo()
-    prices = []
-    try:
-        dates = options.get_expiration_dates('AAPL')
-        try:
-            prices = options.get_options_chain('AAPL', dates[14])
-            price_calls = pd.DataFrame.from_dict(prices['calls'])
-            price_puts = pd.DataFrame.from_dict(prices['puts'])
-            strike_date = datetime.datetime.strptime(dates[14], '%B %d, %Y')
-            price_calls['strike-date'] = strike_date
-            price_puts['strike-date'] = strike_date
-            now = datetime.datetime.now()
-            #now = datetime.datetime.strptime(now.strftime("%m/%d/%Y"),"%m/%d/%Y")
-            price_puts['date'] = now
-            price_calls['date'] = now
-            price_calls['type'] = 'call'
-            price_puts['type'] = 'put'
-            m = stockMongo()
-            m.update_options('AAPL', price_calls, now, 'call')
-            m.update_options('AAPL', price_puts, now, 'put')
-            print("Options updated and stored")
-        except:
-            print("no prices")
-    except:
-        print("No date")
+def main2(tick):
+    dates = options.get_expiration_dates(tick)
+    if len(dates) == 0:
+        print(tick + " has no dates")
+        #m = stockMongo()
+        #m.remove(tick)
+    for day in dates:
+        val = collect_options(tick, day)
+        if not val:
+            print("Options where note stored")
+    print(tick)
+
 if __name__ == "__main__": 
     main()
