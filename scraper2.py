@@ -19,10 +19,10 @@ class stockMongo():
   
     def __init__(self):
         userAndPass = ""
-        user = os.getenv('USER')
+        user = os.getenv('MONGOUSER')
         password = os.getenv('PASSWORD')
         db = os.getenv('DATABASE')
-        mongoUser = os.getenv('MONGOUSER')
+        mongoUser = os.getenv('MONGOACCOUNT')
         if user and password:
             userAndPass = user + ":" + str(password) + "@"
         url = "mongodb+srv://"+ userAndPass + mongoUser + "/test?retryWrites=true&w=majority"
@@ -183,7 +183,7 @@ class stockMongo():
             return pd.concat(cleanSymbols)
         else:
             return []
-            
+
 def collect_options(tick, day):
     try:
         prices = options.get_options_chain(tick, day)
