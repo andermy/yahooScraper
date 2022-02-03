@@ -183,6 +183,7 @@ class stockMongo():
             return pd.concat(cleanSymbols)
         else:
             return []
+            
 def collect_options(tick, day):
     try:
         prices = options.get_options_chain(tick, day)
