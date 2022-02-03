@@ -8,20 +8,27 @@ import json
 from collections import OrderedDict
 from yahoo_fin import options
 import asyncio
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 class stockMongo():
 
     mongoClient = None
     stock_data = None
   
-    def __init__(self, user="test", password="test", database="stock_data"):
+    def __init__(self):
         userAndPass = ""
+        user = os.getenv('USER')
+        password = os.getenv('PASSWORD')
+        db = os.getenv('DATABASE')
+        mongoUser = os.getenv('MONGOUSER')
         if user and password:
             userAndPass = user + ":" + str(password) + "@"
-        url = "mongodb+srv://"+ userAndPass + "nibanfinance-lgkjt.gcp.mongodb.net/test?retryWrites=true&w=majority"
+        url = "mongodb+srv://"+ userAndPass + mongoUser + "/test?retryWrites=true&w=majority"
         self.mongoClient = MongoClient(url)
-        self.stock_data = self.mongoClient[database]
-    
+        self.stock_data = self.mongoClient[db]
+        
     #
     # Adds a symbol from the ddbb, including all timeline entries
     #
@@ -80,7 +87,8 @@ class stockMongo():
         #op['strike-date'] = pd.to_datetime(op['strike-date'], "%Y-%m-%d %H:%M:%S")
         #op['Last Trade Date'] = pd.to_datetime(op['Last Trade Date'], "%Y-%m-%d")
         op = op.set_index('date')
-        return op   
+        return op
+
     
     def get_stocks(self, symbol):
         symbols = self.stock_data.pricedata.find({'sym': symbol})
