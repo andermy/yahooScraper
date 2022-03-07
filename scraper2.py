@@ -33,16 +33,16 @@ class stockMongo():
     # Adds a symbol from the ddbb, including all timeline entries
     #
     def add (self, symbol):
-        exists = self.stock_data.symbols.find ({'sym':symbol}).count()
+        exists = self.stock_data.symbols2.find ({'sym':symbol}).count()
         if not exists:
-            self.stock_data.symbols.insert_one ({'sym':symbol});
+            self.stock_data.symbols2.insert_one ({'sym':symbol});
             print("'" + symbol + "'" + " added to the database")
     
     #
     # Removes a symbol from the ddbb, including all timeline entries
     #
     def remove (self, value):
-        exists = self.stock_data.symbols.find({'sym': value}).count();
+        exists = self.stock_data.symbols2.find({'sym': value}).count();
         if not exists:
             print("Error: symbol'" + value + "' not in the database")
         else:
@@ -50,7 +50,7 @@ class stockMongo():
             print("'" + value + "'" + " removed from the database")
 
     def get_symbols(self):
-        tickers = self.stock_data.symbols.find()
+        tickers = self.stock_data.symbols2.find()
         #tickers = self.stock_data.symbols.find(no_cursor_timeout=True)
 
         return tickers
