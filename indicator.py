@@ -24,15 +24,15 @@ class Options():
             self.prepare_options()
         except:
             self.len_records = 0
-        #self.map_strike_dates()
+        self.map_strike_dates()
         try:
             self.stock_data = StockData(ticker)
             self.merge_stock_data()
             self.count_records()
         except:
             self.len_records = 0
-        #self.map_strike_date_objects()
-        #self.map_strike_dates_returns()
+        self.map_strike_date_objects()
+        self.map_strike_dates_returns()
         
 
     def prepare_options(self):

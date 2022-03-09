@@ -219,12 +219,15 @@ def main():
             dates = options.get_expiration_dates(tick)
             if len(dates) == 0:
                 print(tick +" has no optiondates")
+                time.sleep(60)
+                tickers.append(tick)
                 #m = stockMongo()
                 #m.remove(tick)
             for day in dates:
                 val = collect_options(tick, day)
                 if not val:
                     fails.append(tick)
+            time.sleep(60)
         except:
             print(tick)
     print(tick)
