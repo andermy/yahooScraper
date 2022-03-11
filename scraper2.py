@@ -219,7 +219,7 @@ def main():
             dates = options.get_expiration_dates(tick)
             if len(dates) == 0:
                 print(tick +" has no optiondates")
-                if len(tickers) > 1:
+                if len(tickers) < 2:
                     time.sleep(180)
                 else:
                     time.sleep(60)
