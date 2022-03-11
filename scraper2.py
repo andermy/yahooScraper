@@ -219,7 +219,10 @@ def main():
             dates = options.get_expiration_dates(tick)
             if len(dates) == 0:
                 print(tick +" has no optiondates")
-                time.sleep(60)
+                if len(tickers) > 1:
+                    time.sleep(180)
+                else:
+                    time.sleep(60)
                 tickers.append(tick)
                 #m = stockMongo()
                 #m.remove(tick)
