@@ -27,7 +27,9 @@ class Options():
         self.map_strike_dates()
         try:
             self.stock_data = StockData(ticker)
+            self.vix = StockData("^VIX")
             self.merge_stock_data()
+            self.merge_vix_data()
             self.count_records()
         except:
             self.len_records = 0
@@ -55,6 +57,10 @@ class Options():
 
     def merge_stock_data(self):
         self.options = self.options.merge(self.stock_data.stock_data[['close', 'volatility', 'date']], on='date')
+
+    def merge_vix_data(self):
+        self.vix.rename_vix()
+        self.options = self.options.merge(self.vix.stock_data[['vix', 'date']], on='date')
 
     def map_strike_date_objects(self):
         self.strikeDates = self.strike_dates.map(lambda x: StrikeDateOptions(options=self.options, strike_date=x))
@@ -138,6 +144,7 @@ class Condor():
         self.close = self.options.close.iloc[0]
         self.volatility = self.options.iv.iloc[0]/100
         self.iv = self.options.iv.iloc[0]
+        self.vix = self.options.vix.iloc[0]
         self.vol_factor = vol_factor
         self.condor_options = None
         self.mean_return = None
@@ -246,7 +253,7 @@ class Condor():
                 break
     
     def get_risk_and_returns(self, strike_date):
-        return {'strike_date': strike_date, 'return': self.mean_return, 'rel_risk': self.risk_rel, 'probability': 0.68 * self.vol_factor/0.5, 'volatility': self.volatility, 'is_won':self.is_80_percente_won, 'days_to_strike': self.days_to_strike, 'iv': self.iv, 'is_lost': self.is_20_percent_lost}
+        return {'strike_date': strike_date, 'return': self.mean_return, 'rel_risk': self.risk_rel, 'probability': 0.68 * self.vol_factor/0.5, 'volatility': self.volatility, 'is_won':self.is_80_percente_won, 'days_to_strike': self.days_to_strike, 'iv': self.iv, 'is_lost': self.is_20_percent_lost, 'vix':self.vix}
 
 
 class StockData():
@@ -286,6 +293,9 @@ class StockData():
 
     def get_vol(self, date):
         return self.stock_data.loc[date].volatility
+
+    def rename_vix(self):
+        self.stock_data = self.stock_data.rename(columns={'close':'vix'})
 
 class ImpliedVolatility():
 
