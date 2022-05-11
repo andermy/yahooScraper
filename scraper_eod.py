@@ -12,7 +12,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-class stockMongo():
+class StockMongo():
 
     mongoClient = None
     stock_data = None
@@ -28,6 +28,7 @@ class stockMongo():
         url = "mongodb+srv://"+ userAndPass + mongoUser + "/test?retryWrites=true&w=majority"
         self.mongoClient = MongoClient(url)
         self.stock_data = self.mongoClient[db]
+        self.eod_token = os.getenv('EODTOKEN')
         
     #
     # Adds a symbol from the ddbb, including all timeline entries
@@ -60,17 +61,21 @@ class stockMongo():
             data.index = data.index.astype(str)
             self.stock_data.options_data2.insert_one({'sym': symbol, 'date': date, 'type': otype, 'options': data.to_dict()})
     
-    def collect_strike_date_options(self, ticker, options):
-        calls = pd.json_normalize(options['options']['CALL'])
-        puts = pd.json_normalize(options['options']['PUT'])
+    def collect_strike_date_options(self, ticker, options, save_db=False):
         now = datetime.datetime.now()
         now = datetime.datetime.strptime(now.strftime("%m/%d/%Y"),"%m/%d/%Y")
-        calls['date'] = now
-        puts['date'] = now
-        calls['iv'] = options['impliedVolatility']
-        puts['iv'] = options['impliedVolatility']
-        self.update_options(ticker, calls, now, 'call')
-        self.update_options(ticker, puts, now, 'put')
+        if 'CALL' in options['options'].keys():
+            calls = pd.json_normalize(options['options']['CALL'])
+            calls['date'] = now
+            calls['iv'] = options['impliedVolatility']
+            if save_db:
+                    self.update_options(ticker, calls, now, 'call')
+        if 'PUT' in options['options'].keys():
+            puts = pd.json_normalize(options['options']['PUT'])
+            puts['date'] = now
+            puts['iv'] = options['impliedVolatility']
+            if save_db:
+                self.update_options(ticker, puts, now, 'put')
 
     def collect_eod_options(self, ticker):
         url = 'https://eodhistoricaldata.com/api/options/' + str(ticker) + '.US?api_token=62285d413c8a65.19918555'
@@ -106,7 +111,7 @@ class stockMongo():
 
 def main():  
     print("getting symbols")
-    m = stockMongo()
+    m = StockMongo()
     symbols = m.get_symbols()
     tickers = []
     for sym in symbols:
