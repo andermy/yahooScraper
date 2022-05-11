@@ -77,17 +77,17 @@ class StockMongo():
             if save_db:
                 self.update_options(ticker, puts, now, 'put')
 
-    def collect_eod_options(self, ticker):
+    def collect_eod_options(self, ticker, save_db=False):
         url = 'https://eodhistoricaldata.com/api/options/' + str(ticker) + '.US?api_token=62285d413c8a65.19918555'
         r = requests.get(url)
         if r.status_code == 200:
             data = r.json()
-            [self.collect_strike_date_options(ticker, expiration_date) for expiration_date in data['data']]
+            [self.collect_strike_date_options(ticker=ticker, options=expiration_date, save_db=save_db) for expiration_date in data['data']]
         else:
             print('Something went wrong')
 
     def collect_eod_options_tickerlist(self, ticker_list):
-        [self.collect_eod_options(ticker) for ticker in ticker_list]
+        [self.collect_eod_options(ticker=ticker, save_db=True) for ticker in ticker_list]
 
     def get_options(self, symbol):
         symbols = self.stock_data.options_data2.find({'sym': symbol})
