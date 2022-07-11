@@ -64,27 +64,35 @@ class Options():
     def count_records(self):
         self.len_records =  len(self.options)
 
-    def regression(self):
-        linear_regressor = LinearRegression()
-        selection = self.returns[(self.returns['rel_risk']>0)&(self.returns['rel_risk']<3)&(self.returns['return']>0)&(self.returns['return']<2)]
-        selection['sqr_rel_risk'] = np.log(selection['rel_risk'])
-        y = selection['return']
-        x = selection[['sqr_rel_risk', 'probability', 'iv', 'vix', 'days_to_strike']]
-        linear_regressor.fit(x, y)
+    def collect_strike_date_options(self, ticker, options):
         now = datetime.datetime.now()
         now = datetime.datetime.strptime(now.strftime("%m/%d/%Y"),"%m/%d/%Y")
-        return_dict = {
-            'y0': linear_regressor.intercept_,
-            'sqr_rel_risk': linear_regressor.coef_[0],
-            'probability': linear_regressor.coef_[1], 
-            'iv': linear_regressor.coef_[2], 
-            'vix': linear_regressor.coef_[3], 
-            'days_to_strike': linear_regressor.coef_[4],
-            'ticker': self.ticker,
-            'date': now
-        }
-        self.mongodb.add_analysis(return_dict)
-                
+        if 'CALL' in options['options'].keys():
+            calls = pd.json_normalize(options['options']['CALL'])
+            calls['date'] = now
+            calls['iv'] = options['impliedVolatility']
+        if 'PUT' in options['options'].keys():
+            puts = pd.json_normalize(options['options']['PUT'])
+            puts['date'] = now
+            puts['iv'] = options['impliedVolatility']
+        o = pd.concat([calls, puts])
+        return o
+
+    def collect_eod_options(self, ticker):
+        url = 'https://eodhistoricaldata.com/api/options/' + str(ticker) + '.US?api_token=62285d413c8a65.19918555'
+        r = requests.get(url)
+        if r.status_code == 200:
+            data = r.json()
+            d = [self.collect_strike_date_options(ticker=ticker, options=expiration_date) for expiration_date in data['data']]
+            options = pd.concat(d)
+        else:
+            print('Something went wrong with ' + ticker)
+            options = None
+        return options
+
+    def analyse_options(self):
+        a = self.mongodb.get_analisys(self.ticker)
+        
 
 class StrikeDateOptions():
 
@@ -354,22 +362,17 @@ class ImpliedVolatility():
 
 
 def main():  
-    d = datetime.datetime.now()
-    day_of_month = int(d.strftime("%d"))
     print("getting symbols")
     m = s.StockMongo()
     symbols = m.get_symbols()
     tickers = []
     for sym in symbols:
         tickers.append(sym['sym'])
-    
-    start = int(len(tickers) * (day_of_month-1)/ 30)
-    if start <= len(tickers):
-        print("running data collection")
-        for tick in tickers[start:start+10]:
-            o = Options(tick)
-            o.regression()
-            print("Completed for " + str(tick))
+    print("running data collection")
+    for tick in tickers[:10]:
+        o = Options(tick)
+        o.regression()
+        print("Completed for " + str(tick))
 
 if __name__ == "__main__": 
     main()

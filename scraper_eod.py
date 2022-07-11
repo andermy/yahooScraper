@@ -133,6 +133,9 @@ class StockMongo():
         #op['date'] = op.index
         return op
 
+    def get_analisys(self, ticker):
+        return self.stock_data.options_analisys.find({'ticker': ticker})
+
 def main():  
     print("getting symbols")
     m = StockMongo()
