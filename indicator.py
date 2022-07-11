@@ -66,7 +66,7 @@ class Options():
 
     def regression(self):
         linear_regressor = LinearRegression()
-        selection = s[(s['rel_risk']>0)&(s['rel_risk']<3)&(s['return']>0)&(s['return']<2)]
+        selection = self.returns[(self.returns['rel_risk']>0)&(self.returns['rel_risk']<3)&(self.returns['return']>0)&(self.returns['return']<2)]
         selection['sqr_rel_risk'] = np.log(selection['rel_risk'])
         y = selection['return']
         x = selection[['sqr_rel_risk', 'probability', 'iv', 'vix', 'days_to_strike']]
@@ -85,7 +85,6 @@ class Options():
         }
         self.mongodb.add_analysis(return_dict)
                 
-
 
 class StrikeDateOptions():
 
@@ -352,3 +351,20 @@ class ImpliedVolatility():
             call_am = strikes_above[np.absolute(-strikes_above  + self.close) == min(np.absolute(-strikes_above + self.close))][0]
             options_call = self.options[(self.options['strike']==call_am)&(self.options['type']=='CALL')]
             self.iv = np.mean([options_call['iv'].iloc[0], options_put['iv'].iloc[0]])
+
+
+def main():  
+    print("getting symbols")
+    m = s.StockMongo()
+    symbols = m.get_symbols()
+    tickers = []
+    for sym in symbols:
+        tickers.append(sym['sym'])
+    print("running data collection")
+    for tick in tickers[:10]:
+        o = Options(tick)
+        o.regression()
+        print("Completed for " + str(tick))
+
+if __name__ == "__main__": 
+    main()
