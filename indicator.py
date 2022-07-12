@@ -363,13 +363,16 @@ def main():
     for sym in symbols:
         tickers.append(sym['sym'])
     
-    start = int(len(tickers) * (day_of_month-1)/ 30)
-    if start <= len(tickers):
+    start = int(10 * (day_of_month-1))
+    if start-9 <= len(tickers):
         print("running data collection")
         for tick in tickers[start:start+10]:
-            o = Options(tick)
-            o.regression()
-            print("Completed for " + str(tick))
+            try:
+                o = Options(tick)
+                o.regression()
+                print("Completed for " + str(tick))
+            except:
+                print("Error for " + str(tick))
 
 if __name__ == "__main__": 
     main()
