@@ -62,7 +62,7 @@ class StockMongo():
     def update_options(self, symbol, data, date, otype):
         if len(data) > 0:
             data.index = data.index.astype(str)
-            self.stock_data.options_data2.insert_one({'sym': symbol, 'date': date, 'type': otype, 'options': data.to_dict()})
+            self.stock_data.options_data3.insert_one({'sym': symbol, 'date': date, 'type': otype, 'options': data.to_dict()})
     
     def add_analysis(self, data_dict):
         if isinstance(data_dict, dict):

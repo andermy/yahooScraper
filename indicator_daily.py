@@ -16,12 +16,13 @@ class Options():
     def __init__(self, ticker):
         self.mongodb = s.StockMongo()
         try:
-            self.options = self.mongodb.get_options(ticker)
+            self.ticker = ticker
+            self.options = self.collect_eod_options(self.ticker)
             self.start_date = min(self.options.index)
             self.end_date = max(self.options.index)
             self.strike_dates = []
             self.strikeDates = []
-            self.ticker = ticker
+            self.formula = {}
             self.prepare_options()
         except:
             self.len_records = 0
@@ -34,6 +35,7 @@ class Options():
             self.count_records()
         except:
             self.len_records = 0
+        self.analyse_options()
         self.map_strike_date_objects()
         self.map_strike_dates_returns()
         
@@ -42,8 +44,8 @@ class Options():
         self.options['lastTradeDateTime'] = pd.to_datetime(self.options['lastTradeDateTime'], format='%Y-%m-%d')
         
     def map_strike_dates(self):
-        options = self.options[(self.options['daysBeforeExpiration']<50)&(self.options['daysBeforeExpiration']>40)]
-        self.strike_dates = options.pivot_table(columns="expirationDate", values="volume", aggfunc=np.count_nonzero).columns
+        #options = self.options[(self.options['daysBeforeExpiration']<50)&(self.options['daysBeforeExpiration']>40)]
+        self.strike_dates = self.options.pivot_table(columns="expirationDate", values="volume", aggfunc=np.count_nonzero).columns
 
     def set_strike_date(self, num=7):
         self.options = self.options[self.options['expirationDate']==self.strike_dates[num]]
@@ -56,43 +58,60 @@ class Options():
         self.options = self.options.merge(self.vix.stock_data[['vix', 'date']], on='date')
 
     def map_strike_date_objects(self):
-        self.strikeDates = self.strike_dates.map(lambda x: StrikeDateOptions(options=self.options, strike_date=x))
-    
+        self.strikeDates = self.strike_dates.map(lambda x: StrikeDateOptions(options=self.options, strike_date=x, formula=self.formula))
+
     def map_strike_dates_returns(self):
         self.returns = pd.DataFrame(list(itertools.chain(*[sDate.returns for sDate in self.strikeDates])))
     
     def count_records(self):
         self.len_records =  len(self.options)
 
-    def regression(self):
-        linear_regressor = LinearRegression()
-        selection = self.returns[(self.returns['rel_risk']>0)&(self.returns['rel_risk']<3)&(self.returns['return']>0)&(self.returns['return']<2)]
-        selection['sqr_rel_risk'] = np.log(selection['rel_risk'])
-        y = selection['return']
-        x = selection[['sqr_rel_risk', 'probability', 'iv', 'vix', 'days_to_strike']]
-        linear_regressor.fit(x, y)
+    def collect_strike_date_options(self, options):
         now = datetime.datetime.now()
         now = datetime.datetime.strptime(now.strftime("%m/%d/%Y"),"%m/%d/%Y")
-        return_dict = {
-            'y0': linear_regressor.intercept_,
-            'sqr_rel_risk': linear_regressor.coef_[0],
-            'probability': linear_regressor.coef_[1], 
-            'iv': linear_regressor.coef_[2], 
-            'vix': linear_regressor.coef_[3], 
-            'days_to_strike': linear_regressor.coef_[4],
-            'ticker': self.ticker,
-            'date': now
-        }
-        self.mongodb.add_analysis(return_dict)
-                
+        if 'CALL' in options['options'].keys():
+            calls = pd.json_normalize(options['options']['CALL'])
+            calls['date'] = now
+            calls['iv'] = options['impliedVolatility']
+        if 'PUT' in options['options'].keys():
+            puts = pd.json_normalize(options['options']['PUT'])
+            puts['date'] = now
+            puts['iv'] = options['impliedVolatility']
+        o = pd.concat([calls, puts])
+        return o
+
+    def collect_eod_options(self, ticker):
+        url = 'https://eodhistoricaldata.com/api/options/' + str(ticker) + '.US?api_token=62285d413c8a65.19918555'
+        r = requests.get(url)
+        if r.status_code == 200:
+            data = r.json()
+            d = [self.collect_strike_date_options(options=expiration_date) for expiration_date in data['data']]
+            options = pd.concat(d)
+            options.expirationDate = pd.to_datetime(options.expirationDate, format='%Y-%m-%d')
+            options = options[options['lastTradeDateTime']!='0000-00-00 00:00:00']
+            options.lastTradeDateTime = pd.to_datetime(options.lastTradeDateTime, format='%Y-%m-%d').dt.date
+            options.updatedAt = pd.to_datetime(options.updatedAt, format='%Y-%m-%d').dt.date
+            options.date = options.date - datetime.timedelta(days=2)
+            options = options.set_index('date')
+        else:
+            print('Something went wrong with ' + ticker)
+            options = None
+        return options
+
+    def analyse_options(self):
+        formula = self.mongodb.get_analisys(self.ticker)
+        if formula.count() > 0:
+            self.formula = formula[formula.count()-1]
+
 
 class StrikeDateOptions():
 
-    def __init__(self, options, strike_date):
+    def __init__(self, options, strike_date, formula):
         self.options = options
         self.mapped_options = None
         self.strike_date = strike_date
         self.condors = []
+        self.formula = formula
         self.map_strike_date_options()
         self.map_implied_volatility()
         self.map_volatility()
@@ -115,7 +134,7 @@ class StrikeDateOptions():
 
     def map_volatility(self):
         date_list = pd.date_range(start=self.start_date, end=self.end_date-datetime.timedelta(1))
-        self.volRange = date_list.map(lambda x: VolatilityRange(options=self.mapped_options, strike_date=self.strike_date, start_date=x))
+        self.volRange = VolatilityRange(options=self.mapped_options, strike_date=self.strike_date, formula=self.formula)
         
     def map_returns(self):
         self.returns = [condor.mean_return for condor in self.condors]
@@ -124,37 +143,35 @@ class StrikeDateOptions():
         self.returns = [condor.get_risk_and_returns(self.strike_date) for condor in self.condors]
 
     def map_vol_range_returns(self):
-        self.returns = list(itertools.chain(*[vol.returns for vol in self.volRange]))
+        self.returns = self.volRange.returns
     
 class VolatilityRange():
 
-    def __init__(self, options, strike_date, start_date=datetime.datetime.now() - datetime.timedelta(45), end_date=datetime.datetime.now()):
-        self.start_date = start_date
-        self.end_date = end_date
+    def __init__(self, options, strike_date, formula=None):
         self.strike_date = strike_date
         self.options = options
+        self.formula = formula
         self.map_condor()
         self.map_risk_returns()
     
     def map_condor(self):
         vols = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-        self.condors = [Condor(options=self.options, vol_factor=vol, start_date=self.start_date) for vol in vols]
+        self.condors = [Condor(options=self.options, vol_factor=vol, formula=self.formula) for vol in vols]
         #self.condors = vols.map(lambda x: Condor(options=self.mapped_options, vol_factor=x, start_date=self.start_date))
         
     def map_risk_returns(self):
-        self.returns = [condor.get_risk_and_returns(self.strike_date) for condor in self.condors]
+        self.returns = [condor.calculate_expected_return() for condor in self.condors]
 
 
 class Condor():
 
-    def __init__(self, options, vol_factor, start_date=datetime.datetime.now() - datetime.timedelta(45), end_date=datetime.datetime.now()):
+    def __init__(self, options, vol_factor, formula):
         self.call_strike_low = None
         self.call_strike_high = None
         self.put_strike_low = None
         self.put_strike_high = None
-        self.start_date = start_date
-        self.end_date = end_date
-        self.options = options[(options.date <= self.end_date)&(options.date >= self.start_date)].copy()
+        self.formula = formula
+        self.options = options
         self.close = self.options.close.iloc[0]
         self.volatility = self.options.iv.iloc[0]/100
         self.iv = self.options.iv.iloc[0]
@@ -188,35 +205,26 @@ class Condor():
         condor = condor.merge(put1, on='date', how='inner')
         condor = condor.merge(put2, on='date', how='inner')
 
-        if len(condor) >1:
-            condor['condor'] = condor.callLow-condor.callHigh-condor.putHigh+condor.putLow
-            condor['strikeDiff'] = condor.strikeCallLow - condor.strikePutLow
+        condor['condor'] = condor.callLow-condor.callHigh-condor.putHigh+condor.putLow
+        condor['strikeDiff'] = condor.strikeCallLow - condor.strikePutLow
             #condor['strikeVol'] = condor.strikeDiff/condor.close
-            condor['riskCalls'] = condor.strikeCallHigh - condor.strikeCallLow
-            condor['riskPuts'] = condor.strikePutLow-condor.strikePutHigh
-            condor['risk'] = condor[['riskCalls', 'riskPuts']].max(axis=1)
-            condor['riskRel'] = condor.condor/condor.risk
+        condor['riskCalls'] = condor.strikeCallHigh - condor.strikeCallLow
+        condor['riskPuts'] = condor.strikePutLow-condor.strikePutHigh
+        condor['risk'] = condor[['riskCalls', 'riskPuts']].max(axis=1)
+        condor['riskRel'] = condor.condor/condor.risk
             #condor['condorValue'] = condor.valueCallLow-condor.valueCallHigh-condor.valuePutHigh+condor.valuePutLow
-            condor['condorStrikeDiff'] = condor.strikeCallLow-condor.strikeCallHigh-condor.strikePutHigh+condor.strikePutLow
-            condor.drop_duplicates()
-            condor['change'] = condor.condor.pct_change()
-            init_value = condor.condor.iloc[0]
-            condor['80percentWon'] = condor.condor< init_value*0.2
-            condor['20percentLost'] = condor.condor> init_value*1.2
-            condor['returns'] = condor.condor/init_value
-            if condor['80percentWon'].sum() > 0:
-                self.is_80_percente_won = True
-            if condor['20percentLost'].sum() > 0:
-                self.is_20_percent_lost = True
-            if self.end_date > condor['expirationDate'].iloc[0] - datetime.timedelta(15):
-                self.end_date = condor['expirationDate'].iloc[0] - datetime.timedelta(15) 
-                condor = condor[(condor.date <= self.end_date)&(condor.date >= self.start_date)].copy()
-            if len(condor) > 2:
-                self.mean_return = condor.returns.iloc[-1]
-                self.risk_rel = condor.riskRel.iloc[0]
-                self.days_to_strike = condor.daysBeforeExpiration.iloc[0]
-        
+        condor['condorStrikeDiff'] = condor.strikeCallLow-condor.strikeCallHigh-condor.strikePutHigh+condor.strikePutLow
+        condor.drop_duplicates()
+            #if self.end_date > condor['expirationDate'].iloc[0] - datetime.timedelta(15):
+            #    self.end_date = condor['expirationDate'].iloc[0] - datetime.timedelta(15) 
+            #    condor = condor[(condor.date <= self.end_date)&(condor.date >= self.start_date)].copy()
+            
         self.condor_options = condor
+        self.risk_rel = self.condor_options.riskRel.iloc[0]
+        self.days_to_strike = condor.daysBeforeExpiration.iloc[0]
+        self.high_put = condor.putHigh.iloc[0]
+        self.low_call = condor.callHigh.iloc[0]
+        
 
     def filter_strike_options(self):
         strike_cols = self.options.pivot_table(columns="strike", values="date", aggfunc=np.count_nonzero).columns
@@ -231,7 +239,7 @@ class Condor():
             options = self.options[(self.options['strike']==strike)&(self.options['type']==option_type)&(self.options['strike']>self.close*(1+self.volatility*self.vol_factor))]
         else:
             options = self.options[(self.options['strike']==strike)&(self.options['type']==option_type)&(self.options['strike']<self.close*(1-self.volatility*self.vol_factor))]
-        if len(options) > 5:
+        if len(options) > 0:
             return True
         else:
             return False
@@ -267,7 +275,17 @@ class Condor():
                 print(riskRel)
             if self.volatility <0.05:
                 break
-    
+
+    def calculate_expected_return(self):
+        f = self.formula
+        if self.is_valid:
+            r = f['y0'] + f['probability']*0.68 * self.vol_factor/0.5 + f['iv']*self.iv + f['vix']*self.vix + f['days_to_strike']*self.days_to_strike + f['sqr_rel_risk']*np.log(self.risk_rel)
+            ret = {'rel_risk': self.risk_rel, 'high_put': self.high_put, 'low_call': self.low_call, 'p': 0.68 * self.vol_factor/0.5, 'r': r}
+        else:
+            r = 2
+            ret = {'rel_risk': None, 'high_put': None, 'low_call': None, 'p': 0.68 * self.vol_factor/0.5, 'r': r}
+        return ret
+        
     def get_risk_and_returns(self, strike_date):
         return {'strike_date': strike_date, 'return': self.mean_return, 'rel_risk': self.risk_rel, 'probability': 0.68 * self.vol_factor/0.5, 'volatility': self.volatility, 'is_won':self.is_80_percente_won, 'days_to_strike': self.days_to_strike, 'iv': self.iv, 'iv2': self.iv2, 'is_lost': self.is_20_percent_lost, 'vix':self.vix}
 
@@ -354,25 +372,17 @@ class ImpliedVolatility():
 
 
 def main():  
-    d = datetime.datetime.now()
-    day_of_month = int(d.strftime("%d"))
     print("getting symbols")
     m = s.StockMongo()
     symbols = m.get_symbols()
     tickers = []
     for sym in symbols:
         tickers.append(sym['sym'])
-    
-    start = int(10 * (day_of_month-1))
-    if start-9 <= len(tickers):
-        print("running data collection")
-        for tick in tickers[start:start+5]:
-            try:
-                o = Options(tick)
-                o.regression()
-                print("Completed for " + str(tick))
-            except:
-                print("Error for " + str(tick))
+    print("running data collection")
+    for tick in tickers[:10]:
+        o = Options(tick)
+        o.regression()
+        print("Completed for " + str(tick))
 
 if __name__ == "__main__": 
     main()
