@@ -38,8 +38,9 @@ class Options():
         self.map_strike_dates_returns()
         
     def prepare_options(self):
-        self.options = self.options[self.options['lastTradeDateTime']!='0000-00-00 00:00:00']
+        self.options = self.options[self.options['lastTradeDateTime']!='0000-00-00 00:00:00'].copy()
         self.options['lastTradeDateTime'] = pd.to_datetime(self.options['lastTradeDateTime'], format='%Y-%m-%d')
+        self.options = self.options[self.options['volume']>10].copy()
         
     def map_strike_dates(self):
         options = self.options[(self.options['daysBeforeExpiration']<50)&(self.options['daysBeforeExpiration']>40)]
@@ -138,7 +139,7 @@ class VolatilityRange():
     
     def map_condor(self):
         vols = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-        self.condors = [Condor(options=self.options, vol_factor=vol, start_date=self.start_date) for vol in vols]
+        self.condors = [Condor(options=self.options, vol_factor=vol, start_date=self.start_date, end_date=self.end_date) for vol in vols]
         #self.condors = vols.map(lambda x: Condor(options=self.mapped_options, vol_factor=x, start_date=self.start_date))
         
     def map_risk_returns(self):
