@@ -357,6 +357,8 @@ class ImpliedVolatility():
 def main():  
     d = datetime.datetime.now()
     day_of_month = int(d.strftime("%d"))
+    month = int(d.strftime("%m"))
+    odd = int((month % 2) >0)
     print("getting symbols")
     m = s.StockMongo()
     symbols = m.get_symbols()
@@ -364,10 +366,10 @@ def main():
     for sym in symbols:
         tickers.append(sym['sym'])
     
-    start = int(10 * (day_of_month-1))
+    start = int(5 * (day_of_month-1)) + 10*odd
     if start-9 <= len(tickers):
         print("running data collection")
-        for tick in tickers[start:start+5]:
+        for tick in tickers[start:start+3]:
             try:
                 o = Options(tick)
                 o.regression()
