@@ -67,7 +67,46 @@ class StockMongo():
     def add_analysis(self, data_dict):
         if isinstance(data_dict, dict):
             self.stock_data.options_analisys.insert_one(data_dict)
+
+    def add_trade(self, data_dict):
+        if isinstance(data_dict, dict):
+            portfolioCheck = self.get_portfolio(data_dict['ticker'])
+            if portfolioCheck.count() == 0:
+                data_dict['direction'] = 1
+                self.stock_data.trade_history.insert_one(data_dict)
+                self.update_portfolio(data_dict)
+
+    def remove_trade(self, data_dict):
+        if isinstance(data_dict, dict):
+            data_dict['direction'] = -1
+            self.stock_data.trade_history.insert_one(data_dict)
+            
+    def update_portfolio(self, data_dict):
+        if isinstance(data_dict, dict):
+            self.stock_data.portfolio.insert_one(data_dict)
     
+    def get_portfolio(self, ticker):
+        if ticker is None:
+            portfolio = self.stock_data.portfolio.find()
+        else:
+            portfolio = self.stock_data.portfolio.find({'ticker': ticker})
+        return portfolio
+
+    def sync_portfolio_element(self, data_dict):
+        if isinstance(data_dict, dict):
+            if (data_dict['strike_date'] - data_dict['date']).days < 15:
+                self.stock_data.portfolio.delete_one(data_dict)
+                removed_dict = data_dict
+                del removed_dict['_id']
+                now = datetime.datetime.now()
+                now = datetime.datetime.strptime(now.strftime("%m/%d/%Y"),"%m/%d/%Y")
+                removed_dict['date'] = now
+                self.remove_trade(removed_dict)
+
+    def sync_next_day_portfolio(self):
+        portfolio = self.stock_data.portfolio.find()
+        [self.update_portfolio(p) for p in portfolio]
+
     def collect_strike_date_options(self, ticker, options, save_db=False, debug=True):
         now = datetime.datetime.now()
         now = datetime.datetime.strptime(now.strftime("%m/%d/%Y"),"%m/%d/%Y")

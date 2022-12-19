@@ -10,20 +10,79 @@ from yahoo_fin.stock_info import get_data, get_splits
 import scraper_eod as s
 import itertools
 from sklearn.linear_model import LinearRegression
+#from itertools import accumulate, chain
+
+class TickerAggregation():
+    def __init__(self):
+        self.mongodb = s.StockMongo()
+        self.symbols = list(self.mongodb.get_symbols())
+        self.formulas = list(self.mongodb.stock_data.options_analisys.find())
+        self.tickers = list(set([sym['sym'] for sym in self.symbols]))
+        self.reduced_formaulas = [self.get_formulae(ticker) for ticker in self.tickers]
+        self.reduced_formaulas = [f for f in self.reduced_formaulas if f is not None]
+        #self.reduced_formaulas = list(chain(*self.reduced_formaulas))
+        self.returns = [self.get_today_review(analisys) for analisys in self.reduced_formaulas]
+        self.df = self.get_df()
+        self.mongodb.sync_next_day_portfolio()
+        self.run_trades()
+
+    def get_formulae(self, ticker):
+        x = [f for f in self.formulas if f['ticker']==ticker]
+        if len(x) > 0:
+            return x[len(x)-1]
+        else:
+            return None
+
+    def get_today_review(self, analisys):
+        try:
+            o = Options(analisys['ticker'], analisys)
+            return o.returns
+            #return s[(s['rel_risk']>0)&(s['rel_risk']<3)&(s['r']>0)&(s['r']<2)].copy()
+        except:
+            print(analisys['ticker'])
+            return None
+
+    def get_df(self):
+        now = datetime.datetime.now()
+        now = datetime.datetime.strptime(now.strftime("%m/%d/%Y"),"%m/%d/%Y")
+        df = pd.concat(self.returns)
+        df['date'] = now
+        df['value'] = df.low_put_value - df.high_put_value + df.low_call_value - df.high_put_value
+        return df
+        #c = b[(b['rel_risk']>0.25)&(b['p']>0.5)]
+        #return c.sort_values(by=['r'])
+
+    def run_trades(self):
+        self.traded_tickers = []
+        selected_trades = self.df[(self.df['value']>0)&(self.df['rel_risk']<1)&(self.df['rel_risk']>0.3)&(self.df['r']>0)]
+        selected_trades = selected_trades.sort_values(by=['rel_risk', 'p', 'r'], ascending=False)
+        for index, row in selected_trades.iterrows():
+            if len(self.traded_tickers) > 3:
+                break
+            else:
+                self.trade(row)
+
+    def trade(self, row):
+        if row['ticker'] not in self.traded_tickers:
+            self.traded_tickers.append(row['ticker'])
+            self.mongodb.add_trade(row.to_dict())
+            print(row['ticker'])
+
 
 class Options():
 
-    def __init__(self, ticker):
-        self.mongodb = s.StockMongo()
+    def __init__(self, ticker, formula):
+        #self.mongodb = s.StockMongo()
         try:
             self.ticker = ticker
+            self.formula = formula
             self.options = self.collect_eod_options(self.ticker)
             self.prepare_options()
             self.start_date = min(self.options.index)
             self.end_date = max(self.options.index)
             self.strike_dates = []
             self.strikeDates = []
-            self.formula = {}
+            #self.formula = {}
         except:
             self.len_records = 0
         self.map_strike_dates()
@@ -35,7 +94,7 @@ class Options():
             self.count_records()
         except:
             self.len_records = 0
-        self.analyse_options()
+        #self.analyse_options()
         self.map_strike_date_objects()
         self.map_strike_dates_returns()
         
@@ -93,17 +152,17 @@ class Options():
             options = options[options['lastTradeDateTime']!='0000-00-00 00:00:00']
             options.lastTradeDateTime = pd.to_datetime(options.lastTradeDateTime, format='%Y-%m-%d').dt.date
             options.updatedAt = pd.to_datetime(options.updatedAt, format='%Y-%m-%d').dt.date
-            options.date = options.date - datetime.timedelta(days=1)
+            #options.date = options.date - datetime.timedelta(days=2)
             options = options.set_index('date')
         else:
             print('Something went wrong with ' + ticker)
             options = None
         return options
 
-    def analyse_options(self):
-        formula = self.mongodb.get_analisys(self.ticker)
-        if formula.count() > 0:
-            self.formula = formula[formula.count()-1]
+    #def analyse_options(self):
+    #    formula = self.mongodb.get_analisys(self.ticker)
+    #    if formula.count() > 0:
+    #        self.formula = formula[formula.count()-1]
 
 
 class StrikeDateOptions():
@@ -149,7 +208,7 @@ class StrikeDateOptions():
     
 class VolatilityRange():
 
-    def __init__(self, options, strike_date, formula=None):
+    def __init__(self, options, strike_date, formula):
         self.strike_date = strike_date
         self.options = options
         self.formula = formula
@@ -230,6 +289,8 @@ class Condor():
         self.high_call_strike = condor.strikeCallHigh.iloc[0]
         self.high_put = condor.putHigh.iloc[0]
         self.low_call = condor.callLow.iloc[0]
+        self.high_call = condor.putLow.iloc[0]
+        self.low_put = condor.callHigh.iloc[0]
         
         
 
@@ -286,11 +347,15 @@ class Condor():
     def calculate_expected_return(self, strike_date):
         f = self.formula
         if self.is_valid:
-            r = f['y0'] + f['probability']*0.68 * self.vol_factor/0.5 + f['iv']*self.iv + f['vix']*self.vix + f['days_to_strike']*self.days_to_strike + f['sqr_rel_risk']*np.log(self.risk_rel)
-            ret = {'strike_date': strike_date, 'rel_risk': self.risk_rel, 'high_put': self.high_put, 'low_call': self.low_call, 'highStrikePut': self.high_put_strike, 'lowStrikeCall': self.low_call_strike, 'lowStrikePut': self.low_put_strike, 'highStrikeCall': self.high_call_strike, 'p': 0.68 * self.vol_factor/0.5, 'r': r}
+            if self.risk_rel > 0:
+                r = f['y0'] + f['probability']*0.68 * self.vol_factor/0.5 + f['iv']*self.iv + f['vix']*self.vix + f['days_to_strike']*self.days_to_strike + f['sqr_rel_risk']*np.log(self.risk_rel)
+                ret = {'strike_date': strike_date, 'rel_risk': self.risk_rel, 'high_put_value': self.high_put, 'low_call_value': self.low_call, 'high_call_value': self.high_call, 'low_put_value': self.low_put, 'highStrikePut': self.high_put_strike, 'lowStrikeCall': self.low_call_strike, 'lowStrikePut': self.low_put_strike, 'highStrikeCall': self.high_call_strike, 'p': 0.68 * self.vol_factor/0.5, 'r': r}
+            else:
+                r = 2
+                ret = {'strike_date': strike_date, 'rel_risk': None, 'high_put_value': None, 'low_call_value': None, 'high_call_value': None, 'low_put_value': None, 'highStrikePut': None, 'lowStrikeCall': None, 'lowStrikePut': None, 'highStrikeCall': None, 'p': 0.68 * self.vol_factor/0.5, 'r': r}
         else:
             r = 2
-            ret = {'strike_date': strike_date, 'rel_risk': None, 'high_put': None, 'low_call': None,  'highStrikePut': None, 'lowStrikeCall': None, 'lowStrikePut': None, 'highStrikeCall': None, 'p': 0.68 * self.vol_factor/0.5, 'r': r}
+            ret = {'strike_date': strike_date, 'rel_risk': None, 'high_put_value': None, 'low_call_value': None, 'high_call_value': None, 'low_put_value': None,  'highStrikePut': None, 'lowStrikeCall': None, 'lowStrikePut': None, 'highStrikeCall': None, 'p': 0.68 * self.vol_factor/0.5, 'r': r}
         return ret
         
     def get_risk_and_returns(self, strike_date):
@@ -379,17 +444,11 @@ class ImpliedVolatility():
 
 
 def main():  
-    print("getting analisys")
-    m = s.StockMongo()
-    analisys = m.get_analisys()
-    tickers = []
-    for a in analisys:
-        tickers.append(a['ticker'])
-    print("running data aggregation")
-    for tick in tickers:
-        o = Options(tick)
-        s = o.returns
-        s = s[(s['rel_risk']>0)&(s['rel_risk']<3)&(s['r']>0)&(s['r']<2)].copy()
+    print("starting")
+    now = datetime.datetime.now()
+    if now.weekday() not in [0,6]:
+        t = TickerAggregation()
+    
 
 if __name__ == "__main__": 
     main()
