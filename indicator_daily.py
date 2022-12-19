@@ -446,7 +446,7 @@ class ImpliedVolatility():
 def main():  
     print("starting")
     now = datetime.datetime.now()
-    if now.weekday() not in [0,6]:
+    if now.weekday() not in [5,6]:
         t = TickerAggregation()
     
 
