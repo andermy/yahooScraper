@@ -152,7 +152,7 @@ class Options():
             options = options[options['lastTradeDateTime']!='0000-00-00 00:00:00']
             options.lastTradeDateTime = pd.to_datetime(options.lastTradeDateTime, format='%Y-%m-%d').dt.date
             options.updatedAt = pd.to_datetime(options.updatedAt, format='%Y-%m-%d').dt.date
-            #options.date = options.date - datetime.timedelta(days=2)
+            options.date = options.date - datetime.timedelta(days=1)
             options = options.set_index('date')
         else:
             print('Something went wrong with ' + ticker)
