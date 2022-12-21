@@ -105,7 +105,7 @@ class StockMongo():
 
     def sync_next_day_portfolio(self):
         portfolio = self.stock_data.portfolio.find()
-        [self.update_portfolio(p) for p in portfolio]
+        [self.sync_portfolio_element(p) for p in portfolio]
 
     def collect_strike_date_options(self, ticker, options, save_db=False, debug=True):
         now = datetime.datetime.now()

@@ -21,10 +21,12 @@ class TickerAggregation():
         self.reduced_formaulas = [self.get_formulae(ticker) for ticker in self.tickers]
         self.reduced_formaulas = [f for f in self.reduced_formaulas if f is not None]
         #self.reduced_formaulas = list(chain(*self.reduced_formaulas))
-        self.returns = [self.get_today_review(analisys) for analisys in self.reduced_formaulas]
+        self.options = [self.get_today_review(analisys) for analisys in self.reduced_formaulas]
+        self.returns = [o.returns for o in self.options if o is not None]
         self.df = self.get_df()
         self.mongodb.sync_next_day_portfolio()
         self.run_trades()
+        #self.sync_todays_portfolio()
 
     def get_formulae(self, ticker):
         x = [f for f in self.formulas if f['ticker']==ticker]
@@ -35,8 +37,8 @@ class TickerAggregation():
 
     def get_today_review(self, analisys):
         try:
-            o = Options(analisys['ticker'], analisys)
-            return o.returns
+            return Options(analisys['ticker'], analisys)
+            #return o.returns
             #return s[(s['rel_risk']>0)&(s['rel_risk']<3)&(s['r']>0)&(s['r']<2)].copy()
         except:
             print(analisys['ticker'])
@@ -54,19 +56,57 @@ class TickerAggregation():
 
     def run_trades(self):
         self.traded_tickers = []
-        selected_trades = self.df[(self.df['value']>0)&(self.df['rel_risk']<1)&(self.df['rel_risk']>0.3)&(self.df['r']>0)]
+        selected_trades = self.df[(self.df['value']>0)&(self.df['rel_risk']<1)&(self.df['rel_risk']>0.35)&(self.df['r']>0)]
         selected_trades = selected_trades.sort_values(by=['rel_risk', 'p', 'r'], ascending=False)
         for index, row in selected_trades.iterrows():
-            if len(self.traded_tickers) > 3:
-                break
-            else:
+            if len(self.traded_tickers) < 3:
+                self.traded_tickers.append(row['ticker'])
                 self.trade(row)
 
     def trade(self, row):
         if row['ticker'] not in self.traded_tickers:
-            self.traded_tickers.append(row['ticker'])
             self.mongodb.add_trade(row.to_dict())
             print(row['ticker'])
+
+    def sync_todays_portfolio(self):
+        portfolio = self.mongodb.get_portfolio(None)
+        port = pd.DataFrame.from_records(portfolio)
+        a = []
+        for i, row in port.iterrows():
+            a.append(self.sync_ticker_in_portfolio(row))
+        return a
+
+    def sync_ticker_in_portfolio(self, element):
+        op = [o for o in self.options if o is not None]
+        options = [o.options for o in op if o.ticker == element['ticker']]
+        if len(options) > 0:
+            op = options[0]
+            call1 = op[(op['strike'] == element['lowStrikeCall'])&(op['expirationDate'] == element['strike_date'])&(op['type'] == 'CALL')][['date', 'lastPrice', 'expirationDate', 'strike', 'daysBeforeExpiration', 'iv']]
+            call1.columns = ['date', 'callLow', 'expirationDate', 'strikeCallLow', 'daysBeforeExpiration', 'iv']
+            call2 = op[(op['strike'] == element['highStrikeCall'])&(op['expirationDate'] == element['strike_date'])&(op['type'] == 'CALL')][['date', 'lastPrice', 'strike']]
+            call2.columns = ['date', 'callHigh', 'strikeCallHigh']
+            put1 = op[(op['strike'] == element['lowStrikePut'])&(op['expirationDate'] == element['strike_date'])&(op['type'] == 'CALL')][['date', 'lastPrice', 'strike']]
+            put1.columns = ['date', 'putLow', 'strikePutLow']
+            put2 = op[(op['strike'] == element['highStrikePut'])&(op['expirationDate'] == element['strike_date'])&(op['type'] == 'CALL')][['date', 'lastPrice', 'strike']]
+            put2.columns = ['date', 'putHigh', 'strikePutHigh']
+
+            condor = call1.merge(call2, on='date', how='inner')
+            condor = condor.merge(put1, on='date', how='inner')
+            condor = condor.merge(put2, on='date', how='inner')
+
+            condor['condor'] = condor.callLow-condor.callHigh-condor.putHigh+condor.putLow
+            data_dict = {'strike_date': element['strike_date'], 'p': element['p'], 'highStrikePut': element['highStrikePut'], 'lowStrikeCall': element['lowStrikeCall'], 'lowStrikePut': element['lowStrikePut'], 'highStrikeCall': element['highStrikeCall']}
+            data_dict['high_put_value'] = condor['putHigh']
+            data_dict['low_call_value'] = condor['callLow']
+            data_dict['high_call_value'] = condor['callHigh']
+            data_dict['low_put_value'] = condor['putLow']
+            data_dict['value'] = condor['condor']
+            data_dict['ticker'] = element['ticker']
+            now = datetime.datetime.now()
+            now = datetime.datetime.strptime(now.strftime("%m/%d/%Y"),"%m/%d/%Y")
+            data_dict['date'] = now
+            #self.mongodb.stock_data.portfolio_time_series.insert_one(data_dict)
+            return data_dict
 
 
 class Options():
