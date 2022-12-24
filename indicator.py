@@ -366,7 +366,7 @@ def main():
     for sym in symbols:
         tickers.append(sym['sym'])
     
-    start = int(5 * (day_of_month-1)) + 100*odd
+    start = int(6 * (day_of_month-1)) + 100*odd
     print(start)
     if start-9 <= len(tickers):
         print("running data collection")
