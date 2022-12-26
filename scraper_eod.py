@@ -62,7 +62,7 @@ class StockMongo():
     def update_options(self, symbol, data, date, otype):
         if len(data) > 0:
             data.index = data.index.astype(str)
-            self.stock_data.options_data4.insert_one({'sym': symbol, 'date': date, 'type': otype, 'options': data.to_dict()})
+            self.stock_data.options_data5.insert_one({'sym': symbol, 'date': date, 'type': otype, 'options': data.to_dict()})
     
     def add_analysis(self, data_dict):
         if isinstance(data_dict, dict):
@@ -157,7 +157,7 @@ class StockMongo():
         [self.collect_eod_options(ticker=ticker, save_db=True) for ticker in ticker_list]
 
     def get_options(self, symbol):
-        symbols = self.stock_data.options_data3.find({'sym': symbol})
+        symbols = self.stock_data.options_data4.find({'sym': symbol})
         cleanSymbols = [pd.DataFrame.from_records(s['options']) for s in symbols]
         #for s in symbols:
         #    df = pd.DataFrame.from_records(s['options'])

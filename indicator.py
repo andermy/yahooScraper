@@ -82,7 +82,8 @@ class Options():
             'vix': linear_regressor.coef_[3], 
             'days_to_strike': linear_regressor.coef_[4],
             'ticker': self.ticker,
-            'date': now
+            'date': now,
+            'score': linear_regressor.score(x, y)
         }
         self.mongodb.add_analysis(return_dict)
                 

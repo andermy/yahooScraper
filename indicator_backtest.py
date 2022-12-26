@@ -16,7 +16,11 @@ class Options():
     def __init__(self, ticker):
         self.mongodb = s.StockMongo()
         try:
-            self.options = self.mongodb.get_options(ticker)
+            #self.options = self.mongodb.get_options(ticker)
+            self.options1 = self.init_prep_options(self.mongodb.stock_data.options_data2.find({'sym': ticker}))
+            self.options2 = self.init_prep_options(self.mongodb.stock_data.options_data3.find({'sym': ticker}))
+            self.options3 = self.init_prep_options(self.mongodb.stock_data.options_data4.find({'sym': ticker}))
+            self.options = pd.concat([self.options1, self.options2, self.options3])
             self.start_date = min(self.options.index)
             self.end_date = max(self.options.index)
             self.strike_dates = []
@@ -37,9 +41,26 @@ class Options():
         self.map_strike_date_objects()
         self.map_strike_dates_returns()
         
+    def init_prep_options(self, options):
+        cleanSymbols = [pd.DataFrame.from_records(s['options']) for s in options]
+        #for s in symbols:
+        #    df = pd.DataFrame.from_records(s['options'])
+        #    cleanSymbols.append(df)
+        op = pd.concat(cleanSymbols)
+        op.expirationDate = pd.to_datetime(op.expirationDate, format='%Y-%m-%d')
+        op = op[op['lastTradeDateTime']!='0000-00-00 00:00:00']
+        op.lastTradeDateTime = pd.to_datetime(op.lastTradeDateTime, format='%Y-%m-%d').dt.date
+        op.updatedAt = pd.to_datetime(op.updatedAt, format='%Y-%m-%d').dt.date
+        op.date = op.date - datetime.timedelta(days=1)
+        op = op.set_index('date')
+        #op['date'] = op.index
+        return op
+
     def prepare_options(self):
-        self.options = self.options[self.options['lastTradeDateTime']!='0000-00-00 00:00:00']
+        
+        self.options = self.options[self.options['lastTradeDateTime']!='0000-00-00 00:00:00'].copy()
         self.options['lastTradeDateTime'] = pd.to_datetime(self.options['lastTradeDateTime'], format='%Y-%m-%d')
+        self.options = self.options[self.options['volume']>10].copy()
         
     def map_strike_dates(self):
         options = self.options[(self.options['daysBeforeExpiration']<50)&(self.options['daysBeforeExpiration']>40)]
@@ -81,10 +102,9 @@ class Options():
             'vix': linear_regressor.coef_[3], 
             'days_to_strike': linear_regressor.coef_[4],
             'ticker': self.ticker,
-            'date': now,
-            'score': linear_regressor.score(x, y)
+            'date': now
         }
-        self.mongodb.add_analysis(return_dict)
+        return return_dict, linear_regressor
                 
 
 class StrikeDateOptions():
@@ -139,7 +159,7 @@ class VolatilityRange():
     
     def map_condor(self):
         vols = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-        self.condors = [Condor(options=self.options, vol_factor=vol, start_date=self.start_date) for vol in vols]
+        self.condors = [Condor(options=self.options, vol_factor=vol, start_date=self.start_date, end_date=self.end_date) for vol in vols]
         #self.condors = vols.map(lambda x: Condor(options=self.mapped_options, vol_factor=x, start_date=self.start_date))
         
     def map_risk_returns(self):
@@ -367,9 +387,10 @@ def main():
         tickers.append(sym['sym'])
     
     start = int(6 * (day_of_month-1)) + 100*odd
+    print(start)
     if start-9 <= len(tickers):
         print("running data collection")
-        for tick in tickers[start+4:start+6]:
+        for tick in tickers[start:start+3]:
             try:
                 o = Options(tick)
                 o.regression()
