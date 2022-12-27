@@ -87,7 +87,7 @@ class Options():
 
     def regression(self):
         linear_regressor = LinearRegression()
-        selection = self.returns[(self.returns['rel_risk']>0)&(self.returns['rel_risk']<3)&(self.returns['return']>0)&(self.returns['return']<2)]
+        selection = self.returns[(self.returns['rel_risk']>0)&(self.returns['rel_risk']<1)&(self.returns['return']>0)&(self.returns['return']<2)]
         selection['sqr_rel_risk'] = np.log(selection['rel_risk'])
         y = selection['return']
         x = selection[['sqr_rel_risk', 'probability', 'iv', 'vix', 'days_to_strike']]
@@ -105,6 +105,12 @@ class Options():
             'date': now
         }
         return return_dict, linear_regressor
+
+    def add_backtest_db(self):
+        r = self.returns.dropna(subset=['rel_risk'])
+        r = r[(r['rel_risk']>0)&(r['days_to_strike']<50)&(r['days_to_strike']>30)&(r['rel_risk']<0.7)&(r['return']>0)&(r['return']<3)]
+        r['ticker'] = self.ticker
+        self.mongodb.stock_data.ironcondor_backtest.insert_many(r.to_dict('records'))
                 
 
 class StrikeDateOptions():
@@ -290,7 +296,7 @@ class Condor():
                 break
     
     def get_risk_and_returns(self, strike_date):
-        return {'strike_date': strike_date, 'return': self.mean_return, 'rel_risk': self.risk_rel, 'probability': 0.68 * self.vol_factor/0.5, 'volatility': self.volatility, 'is_won':self.is_80_percente_won, 'days_to_strike': self.days_to_strike, 'iv': self.iv, 'iv2': self.iv2, 'is_lost': self.is_20_percent_lost, 'vix':self.vix}
+        return {'strike_date': strike_date, 'return': self.mean_return, 'rel_risk': self.risk_rel, 'probability': 0.68 * self.vol_factor/0.5, 'volatility': self.volatility, 'is_won':self.is_80_percente_won, 'days_to_strike': self.days_to_strike, 'iv': self.iv, 'iv2': self.iv2, 'is_lost': self.is_20_percent_lost, 'vix':self.vix, 'date': self.start_date}
 
 
 class StockData():
@@ -375,10 +381,10 @@ class ImpliedVolatility():
 
 
 def main():  
-    d = datetime.datetime.now()
-    day_of_month = int(d.strftime("%d"))
-    month = int(d.strftime("%m"))
-    odd = int((month % 2) >0)
+    #d = datetime.datetime.now()
+    #day_of_month = int(d.strftime("%d"))
+    #month = int(d.strftime("%m"))
+    #odd = int((month % 2) >0)
     print("getting symbols")
     m = s.StockMongo()
     symbols = m.get_symbols()
@@ -386,17 +392,25 @@ def main():
     for sym in symbols:
         tickers.append(sym['sym'])
     
-    start = int(6 * (day_of_month-1)) + 100*odd
-    print(start)
-    if start-9 <= len(tickers):
-        print("running data collection")
-        for tick in tickers[start:start+3]:
-            try:
+    #start = int(3 * (day_of_month-1)) * round(month/4)
+    #print(start)
+    #if start-9 <= len(tickers):
+    print("running data collection")
+    i = 0
+    for tick in tickers:
+        if i > 2:
+            break
+        try:
+            tested = m.stock_data.ironcondor_backtest.find({'ticker': tick})
+            if tested.count() ==0:
                 o = Options(tick)
-                o.regression()
+                o.add_backtest_db()
                 print("Completed for " + str(tick))
-            except:
-                print("Error for " + str(tick))
+            else:
+                print(str(tick) + "is already tested")
+        except:
+            print("Error for " + str(tick))
+        i = i + 1
 
 if __name__ == "__main__": 
     main()
