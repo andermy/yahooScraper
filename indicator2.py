@@ -369,7 +369,7 @@ def main():
     start = int(6 * (day_of_month-1)) + 100*odd
     if start-9 <= len(tickers):
         print("running data collection")
-        for tick in tickers[start+4:start+6]:
+        for tick in tickers[start+4:start+5]:
             try:
                 o = Options(tick)
                 o.regression()
