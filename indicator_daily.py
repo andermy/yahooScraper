@@ -144,7 +144,7 @@ class Options():
         self.options = self.options[self.options['volume']>10].copy()
         
     def map_strike_dates(self):
-        self.options = self.options[(self.options['daysBeforeExpiration']<70)&(self.options['daysBeforeExpiration']>30)]
+        self.options = self.options[(self.options['daysBeforeExpiration']<45)&(self.options['daysBeforeExpiration']>25)]
         self.strike_dates = self.options.pivot_table(columns="expirationDate", values="volume", aggfunc=np.count_nonzero).columns
 
     def set_strike_date(self, num=7):

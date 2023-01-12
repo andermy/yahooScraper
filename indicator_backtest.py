@@ -99,7 +99,7 @@ class Options():
             'sqr_rel_risk': linear_regressor.coef_[0],
             'probability': linear_regressor.coef_[1], 
             'iv': linear_regressor.coef_[2], 
-            'vix': linear_regressor.coef_[3], 
+            'vix': linear_regressor.coef_[3],
             'days_to_strike': linear_regressor.coef_[4],
             'ticker': self.ticker,
             'date': now
@@ -110,7 +110,8 @@ class Options():
         r = self.returns.dropna(subset=['rel_risk'])
         r = r[(r['rel_risk']>0)&(r['days_to_strike']<50)&(r['days_to_strike']>30)&(r['rel_risk']<0.7)&(r['return']>0)&(r['return']<3)]
         r['ticker'] = self.ticker
-        self.mongodb.stock_data.ironcondor_backtest.insert_many(r.to_dict('records'))
+        return r
+        #self.mongodb.stock_data.ironcondor_backtest.insert_many(r.to_dict('records'))
                 
 
 class StrikeDateOptions():
@@ -296,7 +297,11 @@ class Condor():
                 break
     
     def get_risk_and_returns(self, strike_date):
-        return {'strike_date': strike_date, 'return': self.mean_return, 'rel_risk': self.risk_rel, 'probability': 0.68 * self.vol_factor/0.5, 'volatility': self.volatility, 'is_won':self.is_80_percente_won, 'days_to_strike': self.days_to_strike, 'iv': self.iv, 'iv2': self.iv2, 'is_lost': self.is_20_percent_lost, 'vix':self.vix, 'date': self.start_date}
+        try:
+            strike_balanse = self.call_strike_low - self.call_strike_high - self.put_strike_high + self.put_strike_low
+        except:
+            strike_balanse = None
+        return {'strike_date': strike_date, 'return': self.mean_return, 'rel_risk': self.risk_rel, 'probability': 0.68 * self.vol_factor/0.5, 'volatility': self.volatility, 'is_won':self.is_80_percente_won, 'days_to_strike': self.days_to_strike, 'iv': self.iv, 'iv2': self.iv2, 'is_lost': self.is_20_percent_lost, 'vix':self.vix, 'date': self.start_date, 'strike_balanse': strike_balanse}
 
 
 class StockData():
