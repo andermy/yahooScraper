@@ -93,14 +93,17 @@ class StockMongo():
         return portfolio
 
     def sync_portfolio_element(self, data_dict):
+        print(type(data_dict))
         if isinstance(data_dict, dict):
-            if (data_dict['strike_date'] - data_dict['date']).days < 15:
+            print((data_dict['strike_date'] - datetime.datetime.now()).days)
+            if (data_dict['strike_date'] - datetime.datetime.now()).days < 15:
                 self.stock_data.portfolio.delete_one(data_dict)
                 removed_dict = data_dict
                 del removed_dict['_id']
                 now = datetime.datetime.now()
                 now = datetime.datetime.strptime(now.strftime("%m/%d/%Y"),"%m/%d/%Y")
                 removed_dict['date'] = now
+                print(data_dict['ticker'] + ' removed')
                 self.remove_trade(removed_dict)
 
     def sync_next_day_portfolio(self):
