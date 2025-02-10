@@ -24,8 +24,8 @@ class TickerAggregation():
         self.options = [self.get_today_review(analisys) for analisys in self.reduced_formaulas]
         self.returns = [o.returns for o in self.options if o is not None]
         self.df = self.get_df()
-        self.mongodb.sync_next_day_portfolio()
-        self.run_trades()
+        #self.mongodb.sync_next_day_portfolio()
+        #self.run_trades()
         #self.sync_todays_portfolio()
 
     def get_formulae(self, ticker):
@@ -49,7 +49,7 @@ class TickerAggregation():
         now = datetime.datetime.strptime(now.strftime("%m/%d/%Y"),"%m/%d/%Y")
         df = pd.concat(self.returns)
         df['date'] = now
-        df['value'] = df.low_put_value - df.high_put_value + df.low_call_value - df.high_put_value
+        df['value'] = df.low_put_value - df.high_put_value + df.low_call_value - df.high_call_value
         return df
         #c = b[(b['rel_risk']>0.25)&(b['p']>0.5)]
         #return c.sort_values(by=['r'])
@@ -192,7 +192,7 @@ class Options():
             options = options[options['lastTradeDateTime']!='0000-00-00 00:00:00']
             options.lastTradeDateTime = pd.to_datetime(options.lastTradeDateTime, format='%Y-%m-%d').dt.date
             options.updatedAt = pd.to_datetime(options.updatedAt, format='%Y-%m-%d').dt.date
-            options.date = options.date - datetime.timedelta(days=1)
+            options.date = options.date - datetime.timedelta(days=3)
             options = options.set_index('date')
         else:
             print('Something went wrong with ' + ticker)
